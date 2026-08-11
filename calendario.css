@@ -1,0 +1,436 @@
+/* Estilização específica do Calendário */
+        .dropdown-container {
+            background-color: #72c67c;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .btn-dropdown {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 38px;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            min-width: 180px;
+            z-index: 100;
+        }
+
+        .dropdown-container:hover .dropdown-menu {
+            display: block;
+        }
+
+        .menu-item-periodo {
+            position: relative;
+            padding: 12px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .menu-item-periodo:hover {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .submenu-turmas {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            min-width: 150px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .menu-item-periodo:hover .submenu-turmas {
+            display: block;
+        }
+
+        .submenu-turmas a {
+            display: block;
+            padding: 10px 15px;
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .submenu-turmas a:hover {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        /* Grid do Calendário */
+        .calendar-box {
+            max-width: 1000px;
+            margin: 30px auto;
+            border: 2px solid #777;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .calendar-header-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: #fff;
+            border-bottom: 1px solid #ccc;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 10px 0;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        .calendar-day {
+            min-height: 100px;
+            border-right: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            position: relative;
+            cursor: pointer;
+            background: #fff;
+            transition: background 0.2s;
+        }
+
+        .calendar-day:nth-child(7n) {
+            border-right: none;
+        }
+
+        .calendar-day:hover {
+            background: #f9f9f9;
+        }
+
+        .day-number {
+            font-size: 20px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .circled {
+            border: 2px solid #2e7d32;
+            color: #2e7d32;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            line-height: 28px;
+        }
+
+        /* Tags e Indicadores dos Eventos */
+        .tag-event {
+            margin-top: 8px;
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            color: white;
+        }
+
+        .tag-Prova { background-color: #d32f2f; }
+        .tag-Trabalho { background-color: #fbc02d; color: #000; }
+        .tag-Evento { background-color: #1976d2; }
+
+        /* Modais */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 380px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid #ccc;
+        }
+
+        .modal-card textarea {
+            width: 100%;
+            height: 90px;
+            border: 2px solid #2e7d32;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 16px;
+            outline: none;
+            resize: none;
+            margin-bottom: 15px;
+        }
+
+.radio-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+    font-size: 18px;
+}
+
+.radio-options label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Oculta o radio nativo do navegador */
+.radio-options input[type="radio"] {
+    display: none;
+}
+
+/* Estilo base do círculo customizado */
+.dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Bordas coloridas quando NÃO selecionado */
+.dot-red { border: 2px solid #d32f2f; background-color: transparent; }
+.dot-yellow { border: 2px solid #fbc02d; background-color: transparent; }
+.dot-blue { border: 2px solid #1976d2; background-color: transparent; }
+
+/* Preenchimento com cor sólida quando SELECIONADO */
+.radio-options input[value="Prova"]:checked + .dot-red {
+    background-color: #d32f2f;
+}
+
+.radio-options input[value="Trabalho"]:checked + .dot-yellow {
+    background-color: #fbc02d;
+}
+
+.radio-options input[value="Evento"]:checked + .dot-blue {
+    background-color: #1976d2;
+}
+        .btn-action {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .btn-cancel {
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        *{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:white;
+}
+
+header{
+    height:90px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 40px;
+    border-bottom:1px solid #ddd;
+}
+
+.logo img{
+    height:75px;
+}
+
+nav{
+    display:flex;
+    gap:45px;
+}
+
+nav a{
+    text-decoration:none;
+    color:#333;
+    font-size:32px;
+}
+
+.menu{
+    font-size:45px;
+}
+
+.titulo{
+    background:#72c67c;
+    color:white;
+    text-align:center;
+    padding:40px;
+
+}
+
+.titulo h1{
+    font-weight:normal;
+    font-size:42px;
+}
+
+/* Container do Dropdown no Banner Verde */
+.dropdown-container {
+  background-color: #72c67c;
+  padding: 15px;
+  text-align: center;
+  position: relative;
+}
+
+.btn-dropdown {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+}
+
+/* Nível 1 - Menu de Períodos (Integral / Noturno) */
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  min-width: 180px;
+  z-index: 100;
+}
+
+/* Exibe o menu ao passar o mouse em Eventos */
+.dropdown-container:hover .dropdown-menu {
+  display: block;
+}
+
+.menu-item-periodo {
+  position: relative;
+  padding: 12px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-item-periodo:hover {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+/* Nível 2 - Submenu de Turmas (Aparece ao lado do período) */
+.submenu-turmas {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%; /* Abre para o lado direito */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  min-width: 150px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Exibe o submenu ao passar o mouse sobre o período */
+.menu-item-periodo:hover .submenu-turmas {
+  display: block;
+}
+
+.submenu-turmas a {
+  display: block;
+  padding: 10px 15px;
+  color: #333;
+  text-decoration: none;
+  font-size: 18px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.submenu-turmas a:hover {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+/* Mensagens de Erro/Aviso Internas */
+.alert-box {
+    display: none;
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    text-align: center;
+}
+
+* {
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+/* Classes para bolinhas sólidas no modal de visualização */
+.dot-red-solid { background-color: #d32f2f; border: 2px solid #d32f2f; }
+.dot-yellow-solid { background-color: #fbc02d; border: 2px solid #fbc02d; }
+.dot-blue-solid { background-color: #1976d2; border: 2px solid #1976d2; }

@@ -268,24 +268,6 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
 
         <button class="btn-action" onclick="fecharModais()">Fechar</button>
     </div>
-
-<div class="radio-options">
-    <label>
-        <input type="radio" name="tempTipo" value="Prova" checked> 
-        <span class="dot dot-red"></span> Prova
-    </label>
-    <label>
-        <input type="radio" name="tempTipo" value="Trabalho"> 
-        <span class="dot dot-yellow"></span> Trabalho
-    </label>
-    <label>
-        <input type="radio" name="tempTipo" value="Evento"> 
-        <span class="dot dot-blue"></span> Evento
-    </label>
-</div>
-
-        <button class="btn-action" onclick="fecharModais()">Fechar</button>
-    </div>
 </div>
 
 <script>

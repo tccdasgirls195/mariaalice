@@ -125,8 +125,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                             mysqli_stmt_close($stmt);
 
-                            // Redireciona depois de registrar o acesso
-                            header("Location: agendamento.php");
+                            // ==========================================
+                            // REDIRECIONA PARA A PÁGINA ESPECÍFICA DO PERFIL
+                            // ==========================================
+                            $destinos = [
+                                'representante' => 'calendario.php',   // Representante vai para o Calendário
+                                'administrador' => 'agendamento.php',  // Altere se o admin tiver outra página
+                                'coordenador'   => 'agendamento.php',  // Altere se o coordenador tiver outra página
+                                'professor'     => 'agendamento.php',  // Altere se o professor tiver outra página
+                                'gestao'        => 'agendamento.php'   // Altere se a gestão tiver outra página
+                            ];
+
+                            // Pega a página configurada para o tipo de usuário ou redireciona para o agendamento por padrão
+                            $paginaDestino = $destinos[$tabela] ?? 'agendamento.php';
+
+                            header("Location: " . $paginaDestino);
                             exit();
                         }
                     }

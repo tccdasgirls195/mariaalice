@@ -2,11 +2,13 @@
 // 1. Inicia a sessão PHP
 session_start();
 
-// 2. Trava de segurança da sessão
-//if (!isset($_SESSION['usuario_id'])) {
-   // header("Location: login.php");
-    //exit();
-//}
+// 2. Trava de segurança da sessão (Descomentada e Validada)
+// Garante que o usuário está logado e que é um representante
+if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_tipo'] !== 'representante') {
+    // Se o tipo no seu login for 'representantes' ou outro nome, ajuste na linha acima
+    header("Location: login.php");
+    exit();
+}
 
 // Cabeçalhos Anti-Cache
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -22,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
     exit();
 }
 
+include("conexao.php");
 include("conexao.php");
 
 // Captura a turma selecionada via URL
@@ -100,20 +103,37 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendário de Eventos - Etec</title>
 
-    <link rel="stylesheet" href="calendario.css">
+    <link rel="stylesheet" href="../css/calendario.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
 
 <header>
     <div class="logo">
-        <img src="logo.png" alt="Logo Etec">
+        <img src="../logo.png" alt="Logo Etec">
     </div>
 
     <nav>
-        <a href="home.php">Home</a>
-        <a href="">Cursos</a>
-        <a href="">A Etec</a>
+        <a href="">Home</a>
+        <a href="#" class="has-submenu">Cursos</a>
+        <a href="#" class="has-submenu">A Etec</a>
+        <a href="#" class="has-submenu">Equipe Etec</a>
+        
+        <li>
+    <a href="../selecionar_lab.html" class="has-submenu">Agendamento</a>
+             <ul class="submenu">
+                <li>
+                <a href="meus-agendamentos.php">Meus agendamentos</a>
+        </li>
+    </ul>
+</li>
+
+        <a href="#" class="has-submenu">Notícias</a>
+        <a href="">Empregos & Estágios</a>
+        <a href="">Parceiros</a>
+        <a href="">TCC</a>
+    
+
     </nav>
 
     <div class="menu">
@@ -127,39 +147,61 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
 </header>
 
 <!-- Banner Superior com Seletor de Período/Turma -->
+
 <section class="dropdown-container">
+
     <button class="btn-dropdown">
-        <?= $nome_turma_atual ? "Eventos - " . htmlspecialchars($nome_turma_atual) : "Eventos" ?> 
-        <i class="fa-solid fa-chevron-down" style="font-size: 24px;"></i>
+        Eventos
+        <i class="fa-solid fa-chevron-down"></i>
     </button>
-    
+
     <div class="dropdown-menu">
-        <!-- Período Integral -->
+
+        <!-- INTEGRAL -->
         <div class="menu-item-periodo">
+
             <span>Integral</span>
-            <i class="fa-solid fa-chevron-right" style="font-size: 14px;"></i>
+
+            <i class="fa-solid fa-chevron-right seta"></i>
+
             <div class="submenu-turmas">
+
                 <?php foreach ($turmas_integral as $t): ?>
+
                     <a href="calendario.php?turma=<?= $t['id_turma'] ?>">
-                        <?= $t['serie'] . ' ' . $t['curso'] ?>
+                        <?= htmlspecialchars($t['serie'] . ' ' . $t['curso']) ?>
                     </a>
+
                 <?php endforeach; ?>
+
             </div>
+
         </div>
 
-        <!-- Período Noturno -->
+
+        <!-- NOTURNO -->
         <div class="menu-item-periodo">
+
             <span>Noturno</span>
-            <i class="fa-solid fa-chevron-right" style="font-size: 14px;"></i>
+
+            <i class="fa-solid fa-chevron-right seta"></i>
+
             <div class="submenu-turmas">
+
                 <?php foreach ($turmas_noturno as $t): ?>
+
                     <a href="calendario.php?turma=<?= $t['id_turma'] ?>">
-                        <?= $t['serie'] . ' ' . $t['curso'] ?>
+                        <?= htmlspecialchars($t['serie'] . ' ' . $t['curso']) ?>
                     </a>
+
                 <?php endforeach; ?>
+
             </div>
+
         </div>
+
     </div>
+
 </section>
 
 <!-- Estrutura Principal do Calendário -->

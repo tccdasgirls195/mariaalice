@@ -1,6 +1,7 @@
 create database MODELO_TCC;
 use MODELO_TCC;
 
+
 create table administrador (
 id_administrador int primary key auto_increment,
 nome varchar (100) not null,

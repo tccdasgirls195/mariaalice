@@ -1,0 +1,1305 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:white;
+    overflow-x:hidden;
+}
+
+
+/* =====================================================
+   CABEÇALHO
+   ===================================================== */
+
+header{
+    width:100%;
+    height:137px;
+    background:#fff;
+
+    display:flex;
+    align-items:center;
+
+    border-bottom:1px solid #ddd;
+    padding:0;
+}
+
+
+/* =====================================================
+   LOGO
+   ===================================================== */
+
+.logo{
+    width:360px;
+    height:137px;
+
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+
+    padding-right:65px;
+}
+
+.logo img{
+    width:auto;
+    height:95px;
+    object-fit:contain;
+}
+
+
+/* =====================================================
+   MENU
+   ===================================================== */
+
+nav{
+    height:100%;
+
+    display:flex;
+    align-items:center;
+
+    gap:0;
+    margin-left:45px;
+}
+
+nav a{
+    height:42px;
+
+    display:flex;
+    align-items:center;
+
+    padding:0 20px;
+
+    text-decoration:none;
+    color:#333;
+
+    font-size:18px;
+    font-weight:bold;
+
+    white-space:nowrap;
+}
+
+
+/* SETINHA DOS MENUS */
+
+nav a.has-submenu::after{
+    content:"";
+
+    width:5px;
+    height:5px;
+
+    border-right:1px solid #333;
+    border-bottom:1px solid #333;
+
+    transform:rotate(45deg);
+
+    margin-left:8px;
+    margin-top:-3px;
+}
+
+
+/* HOVER */
+
+nav a:hover{
+    background:#dff5e6;
+    color:#176b31;
+}
+
+
+/* =====================================================
+   SUBMENU
+   ===================================================== */
+
+nav ul,
+nav li{
+    list-style:none;
+    margin:0;
+    padding:0;
+}
+
+nav li{
+    position:relative;
+}
+
+nav li ul{
+    position:absolute;
+
+    top:42px;
+    left:0;
+
+    width:220px;
+
+    background:white;
+
+    display:none;
+
+    box-shadow:0 4px 12px rgba(0,0,0,0.12);
+
+    z-index:1000;
+}
+
+nav li:hover > ul{
+    display:block;
+}
+
+nav li ul li{
+    width:100%;
+}
+
+nav li ul li a{
+    width:100%;
+    height:41px;
+
+    padding:0 20px;
+
+    display:flex;
+    align-items:center;
+
+    font-size:16px;
+    color:#333;
+
+    background:white;
+}
+
+nav li ul li a:hover{
+    background:#dff5e6;
+    color:#176b31;
+}
+
+
+/* =====================================================
+   FAIXA VERDE / TÍTULO
+   ===================================================== */
+
+.titulo{
+    width:100%;
+    height:115px;
+
+    background:#5dcc7b;
+
+    color:white;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    text-align:center;
+
+    padding:0;
+}
+
+.titulo h1{
+    margin:0;
+    padding:0;
+
+    font-weight:normal;
+    font-size:32px;
+}
+
+
+/* =====================================================
+   BOTÃO SAIR
+   ===================================================== */
+
+.area-sair{
+    width:90%;
+
+    margin:20px auto 0;
+
+    display:flex;
+    justify-content:flex-end;
+}
+
+.area-sair form{
+    margin:0;
+}
+
+.area-sair button{
+    background:none;
+    border:none;
+
+    color:#ff4d4d;
+
+    cursor:pointer;
+
+    font:inherit;
+    font-size:18px;
+
+    display:flex;
+    align-items:center;
+
+    gap:7px;
+}
+
+.area-sair button:hover{
+    color:#d92b2b;
+}
+
+
+/* =====================================================
+   CONTAINER PRINCIPAL
+   ===================================================== */
+
+.container{
+    width:90%;
+
+    margin:30px auto;
+}
+
+
+/* =====================================================
+   FILTROS
+   ===================================================== */
+
+.filtros{
+    display:flex;
+
+    gap:30px;
+
+    margin-bottom:25px;
+}
+
+.campo{
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+}
+
+.campo label{
+    font-size:30px;
+}
+
+.campo input{
+    width:180px;
+    height:45px;
+
+    border-radius:25px;
+    border:2px solid #666;
+
+    padding:10px;
+
+    font-size:20px;
+
+    outline:none;
+}
+
+.campo input:focus{
+    border-color:#72c67c;
+}
+
+
+/* =====================================================
+   HORÁRIO
+   ===================================================== */
+
+.campo-horario{
+    position:relative;
+
+    width:190px;
+}
+
+.campo-horario select{
+    width:100%;
+    height:40px;
+
+    border:2px solid #666;
+    border-radius:25px;
+
+    padding:0 40px 0 15px;
+
+    font-size:18px;
+
+    appearance:none;
+
+    background:white;
+
+    cursor:pointer;
+
+    outline:none;
+}
+
+.campo-horario select:focus{
+    border-color:#72c67c;
+}
+
+.campo-horario i{
+    position:absolute;
+
+    right:15px;
+    top:50%;
+
+    transform:translateY(-50%);
+
+    color:#000;
+
+    pointer-events:none;
+
+    font-size:22px;
+}
+
+
+/* =====================================================
+   ÁREA DO MAPA + LEGENDA
+   ===================================================== */
+
+.conteudo{
+    display:flex;
+
+    gap:5px;
+
+    align-items:flex-start;
+}
+
+
+/* =====================================================
+   MAPA DOS LABORATÓRIOS
+   ===================================================== */
+
+.mapa{
+    width:810px;
+
+    border:2px solid #777;
+    border-radius:10px;
+
+    padding:50px;
+
+    display:grid;
+
+    grid-template-columns:repeat(3,170px);
+
+    gap:90px;
+}
+
+
+/* =====================================================
+   LABORATÓRIOS
+   ===================================================== */
+
+.lab{
+    width:190px;
+    height:130px;
+
+    border:2px solid #444;
+
+    display:flex;
+
+    justify-content:center;
+    align-items:center;
+
+    color:#7dd67a;
+
+    font-size:35px;
+    font-weight:bold;
+
+    border-radius:5px;
+
+    cursor:pointer;
+
+    transition:0.2s;
+}
+
+.lab:hover{
+    background:#f2fff4;
+}
+
+.lab.ocupado{
+    background:#d92b2b;
+
+    color:white;
+
+    cursor:not-allowed;
+}
+
+.lab.ocupado:hover{
+    background:#d92b2b;
+}
+
+
+/* ESPAÇOS VAZIOS DO MAPA */
+
+.vazio{
+    width:170px;
+    height:120px;
+}
+
+
+/* =====================================================
+   LEGENDA
+   ===================================================== */
+
+.legenda{
+    margin-left:30px;
+}
+
+.legenda h2{
+    color:#72c67c;
+
+    margin-bottom:20px;
+
+    font-size:26px;
+}
+
+.item{
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    margin-bottom:20px;
+
+    font-size:26px;
+}
+
+.item .ocupado{
+    width:28px;
+    height:28px;
+
+    background:red;
+
+    border-radius:5px;
+
+    flex-shrink:0;
+}
+
+.item .livre{
+    width:28px;
+    height:28px;
+
+    border:2px solid black;
+
+    border-radius:5px;
+
+    flex-shrink:0;
+}
+
+
+/* =====================================================
+   FORMULÁRIO DE RESERVA
+   ===================================================== */
+
+/*
+   IMPORTANTE:
+   O formulário fica FIXO sobre a página.
+   Portanto ele não altera o tamanho nem a posição
+   dos laboratórios.
+*/
+
+#formReserva{
+    position:fixed;
+
+    top:50%;
+    left:50%;
+
+    transform:translate(-50%, -50%);
+
+    width:450px;
+    max-width:90vw;
+    max-height:90vh;
+
+    overflow-y:auto;
+
+    padding:35px;
+
+    background:white;
+
+    border:2px solid #72c67c;
+    border-radius:20px;
+
+    box-shadow:0 5px 25px rgba(0,0,0,0.30);
+
+    z-index:9999;
+}
+
+#formReserva h2{
+    text-align:center;
+
+    color:#72c67c;
+
+    font-size:30px;
+
+    margin-bottom:25px;
+}
+
+#labEscolhido{
+    background:#f0f8f0;
+
+    border-radius:10px;
+
+    padding:15px;
+
+    font-size:22px;
+    font-weight:bold;
+
+    text-align:center;
+
+    color:#444;
+
+    margin-bottom:25px;
+}
+
+#dataEscolhida,
+#horarioEscolhido{
+    font-size:18px;
+
+    margin-bottom:10px;
+
+    color:#444;
+}
+
+#formReserva label{
+    display:block;
+
+    font-size:20px;
+
+    color:#444;
+
+    margin-top:15px;
+    margin-bottom:8px;
+}
+
+#formReserva input,
+#formReserva textarea{
+    width:100%;
+
+    padding:12px;
+
+    border:2px solid #ccc;
+
+    border-radius:12px;
+
+    font-size:18px;
+
+    outline:none;
+}
+
+#formReserva input:focus,
+#formReserva textarea:focus{
+    border-color:#72c67c;
+}
+
+#formReserva textarea{
+    height:120px;
+
+    resize:none;
+}
+
+#formReserva button{
+    width:100%;
+    height:50px;
+
+    margin-top:25px;
+
+    border:none;
+
+    border-radius:25px;
+
+    background:#72c67c;
+
+    color:white;
+
+    font-size:20px;
+    font-weight:bold;
+
+    cursor:pointer;
+}
+
+#formReserva button:hover{
+    background:#5aaa65;
+}
+
+
+/* =====================================================
+   RESPONSIVIDADE - TABLET / CELULAR
+   ===================================================== */
+
+@media (max-width:768px){
+
+    body{
+        width:100%;
+        overflow-x:hidden;
+    }
+
+
+    /* -------------------------
+       CABEÇALHO
+       ------------------------- */
+
+    header{
+        height:auto;
+        min-height:100px;
+
+        flex-direction:column;
+
+        padding:15px;
+    }
+
+    .logo{
+        width:100%;
+        height:auto;
+
+        justify-content:center;
+
+        padding:0;
+    }
+
+    .logo img{
+        height:70px;
+
+        max-width:90%;
+    }
+
+
+    /* -------------------------
+       MENU
+       ------------------------- */
+
+    nav{
+        width:100%;
+        height:auto;
+
+        margin-left:0;
+
+        justify-content:center;
+
+        flex-wrap:wrap;
+    }
+
+    nav a{
+        font-size:15px;
+
+        padding:10px 12px;
+
+        height:auto;
+    }
+
+
+    /* SUBMENU */
+
+    nav li{
+        position:relative;
+    }
+
+    nav li ul{
+        top:100%;
+        left:0;
+
+        width:200px;
+    }
+
+
+    /* -------------------------
+       TÍTULO
+       ------------------------- */
+
+    .titulo{
+        height:100px;
+
+        padding:15px;
+    }
+
+    .titulo h1{
+        font-size:25px;
+    }
+
+
+    /* -------------------------
+       BOTÃO SAIR
+       ------------------------- */
+
+    .area-sair{
+        width:95%;
+
+        margin-top:15px;
+    }
+
+
+    /* -------------------------
+       CONTAINER
+       ------------------------- */
+
+    .container{
+        width:95%;
+
+        margin:20px auto;
+    }
+
+
+    /* -------------------------
+       FILTROS
+       ------------------------- */
+
+    .filtros{
+        flex-direction:column;
+
+        gap:15px;
+
+        margin-bottom:20px;
+    }
+
+    .campo{
+        width:100%;
+
+        flex-direction:column;
+
+        align-items:flex-start;
+    }
+
+    .campo label{
+        font-size:20px;
+    }
+
+    .campo input{
+        width:100%;
+
+        height:45px;
+
+        font-size:17px;
+    }
+
+    .campo-horario{
+        width:100%;
+    }
+
+
+    /* -------------------------
+       MAPA
+       ------------------------- */
+
+    .conteudo{
+        flex-direction:column;
+
+        width:100%;
+    }
+
+    .mapa{
+        width:100%;
+
+        padding:20px;
+
+        grid-template-columns:repeat(2,1fr);
+
+        gap:15px;
+    }
+
+    .lab{
+        width:100%;
+
+        height:100px;
+
+        font-size:25px;
+    }
+
+    .vazio{
+        width:100%;
+
+        height:100px;
+    }
+
+
+    /* -------------------------
+       LEGENDA
+       ------------------------- */
+
+    .legenda{
+        width:100%;
+
+        margin-left:0;
+
+        margin-top:20px;
+    }
+
+    .legenda h2{
+        font-size:23px;
+    }
+
+    .item{
+        font-size:18px;
+
+        margin-bottom:12px;
+    }
+
+    .item .ocupado,
+    .item .livre,
+    .livre{
+        width:22px;
+        height:22px;
+
+        flex-shrink:0;
+    }
+
+
+    /* -------------------------
+       FORMULÁRIO
+       ------------------------- */
+
+    #formReserva{
+        width:450px;
+
+        max-width:92vw;
+
+        padding:25px;
+    }
+
+    #formReserva h2{
+        font-size:26px;
+    }
+
+    #labEscolhido{
+        font-size:19px;
+    }
+
+    #formReserva label{
+        font-size:18px;
+    }
+
+    #formReserva input,
+    #formReserva textarea{
+        font-size:16px;
+    }
+
+    #formReserva button{
+        font-size:18px;
+    }
+}
+
+/* =========================
+   BOTÃO X - FECHAR FORMULÁRIO
+   ========================= */
+
+#formReserva{
+    position:fixed;
+}
+
+.fechar-formulario{
+    position:absolute;
+
+    top:10px;
+    right:15px;
+
+    width:35px !important;
+    height:35px !important;
+
+    margin:0 !important;
+    padding:0;
+
+    border:none !important;
+    border-radius:50% !important;
+
+    background:transparent !important;
+
+    color:#555 !important;
+
+    font-size:30px !important;
+    font-weight:normal !important;
+
+    line-height:30px;
+
+    cursor:pointer;
+}
+
+.fechar-formulario:hover{
+    background:#f1f1f1 !important;
+    color:#d92b2b !important;
+}
+
+
+/* =====================================================
+   CELULARES PEQUENOS
+   ===================================================== */
+
+@media (max-width:480px){
+
+    .logo img{
+        height:60px;
+    }
+
+    nav a{
+        font-size:13px;
+
+        padding:8px 9px;
+    }
+
+    .titulo{
+        height:85px;
+    }
+
+    .titulo h1{
+        font-size:21px;
+    }
+
+    .mapa{
+        padding:12px;
+
+        gap:10px;
+    }
+
+    .lab{
+        height:80px;
+
+        font-size:20px;
+    }
+
+    .vazio{
+        height:80px;
+    }
+
+    #formReserva{
+        padding:20px 15px;
+    }
+}
+
+
+
+/* =====================================================
+   BOTÕES DO CABEÇALHO
+   ===================================================== */
+
+.acoes-header{
+    margin-left:auto;
+    height:100%;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:0 20px 0 10px;
+    flex-shrink:0;
+}
+
+.botao-header{
+    width:48px;
+    height:48px;
+    border:none;
+    background:transparent;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    color:#111;
+    font-size:30px;
+    border-radius:8px;
+    transition:0.2s;
+}
+
+.botao-header:hover{
+    background:#dff5e6;
+    color:#176b31;
+}
+
+.botao-menu{
+    font-size:32px;
+}
+
+
+/* =====================================================
+   BARRA LATERAL
+   ===================================================== */
+
+.barra-lateral{
+    position:fixed;
+    top:137px;
+    right:0;
+
+    width:310px;
+    height:calc(100vh - 137px);
+
+    background:#fff;
+
+    display:flex;
+    flex-direction:column;
+
+    box-shadow:-4px 0 18px rgba(0,0,0,0.18);
+
+    z-index:10000;
+
+    transform:translateX(100%);
+    transition:transform 0.3s ease;
+
+    overflow:hidden;
+}
+
+.barra-lateral.aberta{
+    transform:translateX(0);
+}
+
+
+/* FAIXA VERDE */
+
+.barra-topo{
+    width:100%;
+    height:50px;
+    min-height:50px;
+    background:#72c67c;
+}
+
+
+/* FUNDO ATRÁS DA BARRA */
+
+.fundo-barra{
+    position:fixed;
+    inset:0;
+
+    background:rgba(0,0,0,0.18);
+
+    z-index:9999;
+
+    opacity:0;
+    visibility:hidden;
+
+    transition:0.25s;
+}
+
+.fundo-barra.ativo{
+    opacity:1;
+    visibility:visible;
+}
+
+
+/* =====================================================
+   OPÇÃO FIXA SUPERIOR
+   ===================================================== */
+
+.barra-opcao-fixa{
+    width:100%;
+    padding:12px 14px 6px;
+    flex-shrink:0;
+}
+
+.opcao-lateral{
+    min-height:48px;
+    width:100%;
+
+    padding:10px 14px;
+
+    display:flex;
+    align-items:center;
+    gap:10px;
+
+    border:2px solid #222;
+    border-radius:14px;
+
+    color:#222;
+    background:#fff;
+
+    text-decoration:none;
+
+    font-size:19px;
+
+    transition:0.2s;
+}
+
+.opcao-lateral:hover{
+    background:#f1fff4;
+    border-color:#72c67c;
+}
+
+.opcao-lateral i{
+    width:24px;
+    text-align:center;
+    color:#72c67c;
+    flex-shrink:0;
+}
+
+
+/* =====================================================
+   NOTIFICAÇÕES COM ROLAGEM
+   ===================================================== */
+
+.area-notificacoes{
+    min-height:0;
+    flex:1;
+
+    display:flex;
+    flex-direction:column;
+
+    padding:8px 14px 10px;
+}
+
+.area-notificacoes h2{
+    margin:0;
+    padding:5px 5px 10px;
+
+    font-size:21px;
+    font-weight:normal;
+    color:#222;
+
+    flex-shrink:0;
+}
+
+.lista-notificacoes{
+    flex:1;
+    min-height:0;
+
+    overflow-y:auto;
+
+    padding:0 2px 5px 0;
+
+    scrollbar-width:thin;
+    scrollbar-color:#b8b8b8 transparent;
+}
+
+.lista-notificacoes::-webkit-scrollbar{
+    width:7px;
+}
+
+.lista-notificacoes::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+.lista-notificacoes::-webkit-scrollbar-thumb{
+    background:#bbb;
+    border-radius:10px;
+}
+
+
+/* CADA NOTIFICAÇÃO */
+
+.notificacao{
+    width:100%;
+    min-height:44px;
+
+    margin-bottom:14px;
+    padding:8px 12px;
+
+    display:flex;
+    align-items:center;
+    gap:9px;
+
+    border:2px solid #222;
+    border-radius:14px;
+
+    background:#fff;
+
+    font-size:19px;
+}
+
+.notificacao i{
+    font-size:18px;
+    flex-shrink:0;
+}
+
+.notificacao-ok{
+    color:#5fd477;
+}
+
+.notificacao-erro{
+    color:#e94a43;
+}
+
+
+/* =====================================================
+   LOGOUT FIXO EMBAIXO
+   ===================================================== */
+
+.barra-logout{
+    width:100%;
+
+    padding:10px 14px 16px;
+
+    background:#fff;
+
+    border-top:1px solid #ddd;
+
+    flex-shrink:0;
+}
+
+.barra-logout form{
+    margin:0;
+}
+
+.barra-logout button{
+    width:100%;
+    height:50px;
+
+    border:none;
+    border-radius:10px;
+
+    background:#f5f5f5;
+
+    color:#e34842;
+
+    cursor:pointer;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+
+    font-size:19px;
+
+    transition:0.2s;
+}
+
+.barra-logout button:hover{
+    background:#ffe9e8;
+    color:#c92f29;
+}
+
+
+/* =====================================================
+   RESPONSIVIDADE DA BARRA LATERAL
+   ===================================================== */
+
+@media (max-width:768px){
+
+    .acoes-header{
+        width:100%;
+        height:auto;
+        justify-content:flex-end;
+        padding:5px 10px 0;
+    }
+
+    .barra-lateral{
+        top:0;
+        width:min(310px,88vw);
+        height:100vh;
+    }
+
+    .barra-topo{
+        height:55px;
+        min-height:55px;
+    }
+
+    .opcao-lateral{
+        font-size:18px;
+    }
+
+    .notificacao{
+        font-size:17px;
+    }
+
+    .area-notificacoes h2{
+        font-size:20px;
+    }
+}
+
+@media (max-width:480px){
+
+    .botao-header{
+        width:42px;
+        height:42px;
+        font-size:26px;
+    }
+
+    .botao-menu{
+        font-size:29px;
+    }
+
+    .barra-lateral{
+        width:88vw;
+    }
+
+    .notificacao{
+        min-height:42px;
+        margin-bottom:12px;
+        font-size:16px;
+    }
+
+    .opcao-lateral{
+        min-height:45px;
+        font-size:17px;
+    }
+}

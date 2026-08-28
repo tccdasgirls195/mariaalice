@@ -2,12 +2,10 @@
 // 1. Inicia a sessão PHP
 session_start();
 
-// 2. Trava de segurança da sessão (Descomentada e Validada)
-// Garante que o usuário está logado e que é um representante
-if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_tipo'] !== 'representante') {
-    // Se o tipo no seu login for 'representantes' ou outro nome, ajuste na linha acima
-    header("Location: login.php");
-    exit();
+// 2. Trava de segurança da sessão
+if (!isset($_SESSION['usuario_id'])) {
+   header("Location: login.php");
+   exit();
 }
 
 // Cabeçalhos Anti-Cache
@@ -25,10 +23,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
 }
 
 include("conexao.php");
-include("conexao.php");
 
 // Captura a turma selecionada via URL
 $id_turma_selecionada = isset($_GET['turma']) ? (int)$_GET['turma'] : null;
+
+// Captura Mês e Ano definidos na URL (se não informados, pega o mês/ano atual)
+$mes_atual = isset($_GET['mes']) ? (int)$_GET['mes'] : (int)date('m');
+$ano_atual = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
+
+// Garante que o mês permaneça dentro dos limites de 1 a 12
+if ($mes_atual < 1) {
+    $mes_atual = 12;
+    $ano_atual--;
+} elseif ($mes_atual > 12) {
+    $mes_atual = 1;
+    $ano_atual++;
+}
 
 // Processa a Inserção de Novo Evento
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_evento'])) {
@@ -38,17 +48,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_evento'])) {
     $id_turma = (int)$_POST['id_turma'];
 
     if (!empty($nome) && !empty($data_evento) && !empty($id_turma)) {
-        // Insere na tabela eventos
         $sql_evento = "INSERT INTO eventos (nome, descr, data_evento, tipo) VALUES ('$nome', '$nome', '$data_evento', '$tipo')";
         if (mysqli_query($conexao, $sql_evento)) {
             $id_evento = mysqli_insert_id($conexao);
-            // Relaciona no calendário com a turma
             $sql_cal = "INSERT INTO calendario (id_eventos, id_turma) VALUES ($id_evento, $id_turma)";
             mysqli_query($conexao, $sql_cal);
             
-            header("Location: calendario.php?turma=" . $id_turma);
+            header("Location: calendario.php?turma=" . $id_turma . "&mes=" . $mes_atual . "&ano=" . $ano_atual);
             exit();
         }
+    }
+}
+
+// Processa a Exclusão do Evento
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_evento'])) {
+    $id_evento_del = (int)$_POST['id_evento'];
+    
+    // Deleta do calendário e depois do evento
+    mysqli_query($conexao, "DELETE FROM calendario WHERE id_eventos = $id_evento_del");
+    mysqli_query($conexao, "DELETE FROM eventos WHERE id_eventos = $id_evento_del");
+
+    header("Location: calendario.php?turma=" . $id_turma_selecionada . "&mes=" . $mes_atual . "&ano=" . $ano_atual);
+    exit();
+}
+
+// Processa a Edição do Evento
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evento'])) {
+    $id_evento_edit = (int)$_POST['id_evento'];
+    $nome_edit = mysqli_real_escape_string($conexao, $_POST['nome']);
+    $tipo_edit = mysqli_real_escape_string($conexao, $_POST['tipo']);
+
+    if (!empty($nome_edit)) {
+        $sql_update = "UPDATE eventos SET nome = '$nome_edit', descr = '$nome_edit', tipo = '$tipo_edit' WHERE id_eventos = $id_evento_edit";
+        mysqli_query($conexao, $sql_update);
+
+        header("Location: calendario.php?turma=" . $id_turma_selecionada . "&mes=" . $mes_atual . "&ano=" . $ano_atual);
+        exit();
     }
 }
 
@@ -57,14 +92,12 @@ $eventos_cadastrados = [];
 $nome_turma_atual = "";
 
 if ($id_turma_selecionada) {
-    // Nome da turma atual
     $sql_t_atual = "SELECT serie, curso FROM turma WHERE id_turma = $id_turma_selecionada";
     $res_t_atual = mysqli_query($conexao, $sql_t_atual);
     if ($row_t = mysqli_fetch_assoc($res_t_atual)) {
         $nome_turma_atual = $row_t['serie'] . " " . $row_t['curso'];
     }
 
-    // Busca os eventos
     $sql_busca = "SELECT e.* FROM eventos e 
                   INNER JOIN calendario c ON e.id_eventos = c.id_eventos 
                   WHERE c.id_turma = $id_turma_selecionada";
@@ -82,18 +115,37 @@ $turmas_integral = [];
 $turmas_noturno = [];
 
 while ($t = mysqli_fetch_assoc($result_turmas)) {
-    // Separação lógica para exibição nos submenus (Noturno vs Integral)
-    if ($t['curso'] == 'RH') { 
+    // Se o período for 'N', vai para Noturno. Qualquer outro valor ('I' ou nulo) vai para Integral
+    if (strtoupper($t['periodo']) === 'N') { 
         $turmas_noturno[] = $t;
     } else {
         $turmas_integral[] = $t;
     }
 }
 
-// Definição de Mês/Ano para a grade
-$mes_atual = date('m');
-$ano_atual = date('Y');
+// Cálculos para montar a grade dinamicamente do mês escolhido
 $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
+
+// Identifica o dia da semana em que o dia 01 cai (1 = Segunda, 7 = Domingo)
+$primeiro_dia_semana = (int)date('N', strtotime(sprintf('%04d-%02d-01', $ano_atual, $mes_atual)));
+
+// Nomes dos Meses em Português
+$meses_nome = [
+    1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+    5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+    9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro'
+];
+
+// URLs para navegação de anterior e próximo mês
+$mes_anterior = $mes_atual - 1;
+$ano_anterior = $ano_atual;
+if ($mes_anterior < 1) { $mes_anterior = 12; $ano_anterior--; }
+
+$mes_proximo = $mes_atual + 1;
+$ano_proximo = $ano_atual;
+if ($mes_proximo > 12) { $mes_proximo = 1; $ano_proximo++; }
+
+$param_turma = $id_turma_selecionada ? "&turma=" . $id_turma_selecionada : "";
 ?>
 
 <!DOCTYPE html>
@@ -120,26 +172,22 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
         <a href="#" class="has-submenu">Equipe Etec</a>
         
         <li>
-    <a href="../selecionar_lab.html" class="has-submenu">Agendamento</a>
-             <ul class="submenu">
-                <li>
-                <a href="meus-agendamentos.php">Meus agendamentos</a>
+            <a href="../selecionar_lab.html" class="has-submenu">Agendamento</a>
+            <ul class="submenu">
+                <li><a href="meus-agendamentos.php">Meus agendamentos</a></li>
+            </ul>
         </li>
-    </ul>
-</li>
 
         <a href="#" class="has-submenu">Notícias</a>
         <a href="">Empregos & Estágios</a>
         <a href="">Parceiros</a>
         <a href="">TCC</a>
-    
-
     </nav>
 
     <div class="menu">
-        <form action="calendario.php" method="POST" style="display:inline;"> 
+        <form action="calendario.php" method="POST" class="form-logout"> 
             <input type="hidden" name="logout" value="1">
-            <button type="submit" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size: 24px;">
+            <button type="submit" class="btn-logout">
                 <i class="fa-solid fa-right-from-bracket"></i>
             </button>
         </form>
@@ -147,65 +195,55 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
 </header>
 
 <!-- Banner Superior com Seletor de Período/Turma -->
-
 <section class="dropdown-container">
-
     <button class="btn-dropdown">
-        Eventos
+        <?= $nome_turma_atual ? "Eventos - " . htmlspecialchars($nome_turma_atual) : "Eventos" ?>
         <i class="fa-solid fa-chevron-down"></i>
     </button>
 
     <div class="dropdown-menu">
-
         <!-- INTEGRAL -->
         <div class="menu-item-periodo">
-
             <span>Integral</span>
-
             <i class="fa-solid fa-chevron-right seta"></i>
-
             <div class="submenu-turmas">
-
                 <?php foreach ($turmas_integral as $t): ?>
-
-                    <a href="calendario.php?turma=<?= $t['id_turma'] ?>">
+                    <a href="calendario.php?turma=<?= $t['id_turma'] ?>&mes=<?= $mes_atual ?>&ano=<?= $ano_atual ?>">
                         <?= htmlspecialchars($t['serie'] . ' ' . $t['curso']) ?>
                     </a>
-
                 <?php endforeach; ?>
-
             </div>
-
         </div>
-
 
         <!-- NOTURNO -->
         <div class="menu-item-periodo">
-
             <span>Noturno</span>
-
             <i class="fa-solid fa-chevron-right seta"></i>
-
             <div class="submenu-turmas">
-
                 <?php foreach ($turmas_noturno as $t): ?>
-
-                    <a href="calendario.php?turma=<?= $t['id_turma'] ?>">
+                    <a href="calendario.php?turma=<?= $t['id_turma'] ?>&mes=<?= $mes_atual ?>&ano=<?= $ano_atual ?>">
                         <?= htmlspecialchars($t['serie'] . ' ' . $t['curso']) ?>
                     </a>
-
                 <?php endforeach; ?>
-
             </div>
-
         </div>
-
     </div>
-
 </section>
 
 <!-- Estrutura Principal do Calendário -->
 <div class="container">
+
+    <!-- Barra de Navegação entre os Meses do Ano -->
+    <div class="calendar-month-nav">
+        <a href="calendario.php?mes=<?= $mes_anterior ?>&ano=<?= $ano_anterior ?><?= $param_turma ?>" class="nav-month-btn">
+            <i class="fa-solid fa-chevron-left"></i>
+        </a>
+        <h2 class="calendar-month-title"><?= $meses_nome[$mes_atual] . " " . $ano_atual ?></h2>
+        <a href="calendario.php?mes=<?= $mes_proximo ?>&ano=<?= $ano_proximo ?><?= $param_turma ?>" class="nav-month-btn">
+            <i class="fa-solid fa-chevron-right"></i>
+        </a>
+    </div>
+
     <div class="calendar-box">
         <div class="calendar-header-days">
             <div>Segunda</div>
@@ -219,8 +257,16 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
 
         <div class="calendar-grid">
             <?php 
+            // 1. Células vazias de offset (alinha o dia 1 ao dia correto da semana)
+            for ($offset = 1; $offset < $primeiro_dia_semana; $offset++): 
+            ?>
+                <div class="calendar-day empty-day"></div>
+            <?php endfor; ?>
+
+            <?php 
+            // 2. Renderização dos dias do mês
             for ($dia = 1; $dia <= $dias_no_mes; $dia++): 
-                $data_formatada = sprintf("%s-%s-%02d", $ano_atual, $mes_atual, $dia);
+                $data_formatada = sprintf("%04d-%02d-%02d", $ano_atual, $mes_atual, $dia);
                 $tem_evento = isset($eventos_cadastrados[$data_formatada]);
                 $evt = $tem_evento ? $eventos_cadastrados[$data_formatada] : null;
             ?>
@@ -240,11 +286,16 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
 
 <!-- Modal de Alerta: Sem turma selecionada -->
 <div class="modal-overlay" id="modalAviso">
-    <div class="modal-card" style="text-align: center;">
-        <i class="fa-solid fa-circle-exclamation" style="font-size: 40px; color: #e65100; margin-bottom: 15px;"></i>
-        <h3 style="margin-bottom: 10px; color: #333;">Selecione uma Turma</h3>
-        <p style="color: #666; font-size: 16px; margin-bottom: 20px;">Por favor, selecione primeiro uma turma no menu <strong>"Eventos"</strong> para interagir com o calendário.</p>
-        <button class="btn-action" onclick="fecharModais()">Entendido</button>
+    <div class="modal-card modal-card-centered">
+        <!-- Botão fechar -->
+        <button class="btn-close-corner" onclick="fecharModais()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <br>
+        <h3>Selecione uma Turma!</h3>
+        <br>
+        <p>Por favor, selecione primeiro uma turma no menu <strong>"Eventos"</strong> para interagir com o calendário.</p>
+
     </div>
 </div>
 
@@ -279,8 +330,8 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
 
 <!-- Modal 2: Confirmar Envio -->
 <div class="modal-overlay" id="modalConfirmar">
-    <div class="modal-card" style="text-align: center;">
-        <p style="font-size: 20px; font-weight: bold; margin-bottom: 20px;">Tem certeza que deseja adicionar o evento?</p>
+    <div class="modal-card modal-card-centered">
+        <p class="txt-confirmacao">Tem certeza que deseja adicionar o evento?</p>
         
         <form method="POST">
             <input type="hidden" name="salvar_evento" value="1">
@@ -297,24 +348,77 @@ $dias_no_mes = cal_days_in_month(CAL_GREGORIAN, $mes_atual, $ano_atual);
     </div>
 </div>
 
-<!-- Modal 3: Visualizar Evento Existente -->
+<!-- Modal 3: Visualizar Evento Existente com Ações -->
 <div class="modal-overlay" id="modalVer">
     <div class="modal-card">
-        <div style="border: 2px solid #2e7d32; border-radius: 12px; padding: 15px; margin-bottom: 15px;">
-            <h3 id="verNome" style="margin-bottom: 10px; font-size: 20px;"></h3>
-            <p id="verData" style="color: #555;"></p>
+        <button class="btn-close-corner" onclick="fecharModais()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <br>
+        <div class="ver-evento-box">
+            <h3 id="verNome" class="ver-nome"></h3>
+            <p id="verData" class="ver-data"></p>
         </div>
 
-        <!-- Exibe apenas o tipo selecionado com a bolinha colorida preenchida -->
-        <div id="verTipoContainer" style="margin-bottom: 20px; font-size: 18px; display: flex; align-items: center; gap: 10px;"></div>
+        <div id="verTipoContainer" class="ver-tipo-container"></div>
 
-        <button class="btn-action" onclick="fecharModais()">Fechar</button>
+        <!-- Botões de Ação (Editar e Excluir) -->
+        <div class="modal-actions ver-actions">
+            <button type="button" class="btn-action btn-edit" onclick="abrirModalEditar()">
+                <i class="fa-solid fa-pen"></i> Editar
+            </button>
+
+            <form method="POST" class="form-inline" onsubmit="return confirm('Tem certeza que deseja excluir este evento?');">
+                <input type="hidden" name="excluir_evento" value="1">
+                <input type="hidden" name="id_evento" id="delIdEvento">
+                <button type="submit" class="btn-cancel btn-delete">
+                    <i class="fa-solid fa-trash"></i> Excluir
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 4: Editar Evento -->
+<div class="modal-overlay" id="modalEditar">
+    <div class="modal-card">
+        <button class="btn-close-corner" onclick="fecharModais()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <br>
+        <form method="POST">
+            <input type="hidden" name="editar_evento" value="1">
+            <input type="hidden" name="id_evento" id="editIdEvento">
+
+            <textarea id="editNome" name="nome" placeholder="Descrição do evento.."></textarea>
+
+            <div class="radio-options">
+                <label>
+                    <input type="radio" name="tipo" id="editTipoProva" value="Prova"> 
+                    <span class="dot dot-red"></span> Prova
+                </label>
+                <label>
+                    <input type="radio" name="tipo" id="editTipoTrabalho" value="Trabalho"> 
+                    <span class="dot dot-yellow"></span> Trabalho
+                </label>
+                <label>
+                    <input type="radio" name="tipo" id="editTipoEvento" value="Evento"> 
+                    <span class="dot dot-blue"></span> Evento
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button type="submit" class="btn-action">Salvar</button>
+                <button type="button" class="btn-cancel" onclick="fecharModais()">Cancelar</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
 let turmaSelecionada = <?= json_encode($id_turma_selecionada) ?>;
 let dataSelecionada = null;
+let eventoAtual = null; // Declarada no escopo global para o editor acessar
 
 function clicarDia(data, evento) {
     if (!turmaSelecionada) {
@@ -325,32 +429,47 @@ function clicarDia(data, evento) {
     dataSelecionada = data;
 
     if (evento) {
+        eventoAtual = evento;
         document.getElementById('verNome').innerText = evento.nome;
         
-        // Converte o formato "YYYY-MM-DD" para "DD/MM/YYYY"
         const partesData = evento.data_evento.split('-');
         const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
         
         document.getElementById('verData').innerText = "Data: " + dataFormatada;
         
-        // Mapeia a cor da bolinha sólida de acordo com o tipo do evento
         let dotClass = '';
         if (evento.tipo === 'Prova') dotClass = 'dot-red-solid';
         else if (evento.tipo === 'Trabalho') dotClass = 'dot-yellow-solid';
         else if (evento.tipo === 'Evento') dotClass = 'dot-blue-solid';
 
-        // Renderiza apenas o tipo do evento clicado
         document.getElementById('verTipoContainer').innerHTML = `
             <span class="dot ${dotClass}"></span>
             <span>${evento.tipo}</span>
         `;
         
+        // Atribui o ID ao form de exclusão
+        document.getElementById('delIdEvento').value = evento.id_eventos;
+
         document.getElementById('modalVer').style.display = 'flex';
     } else {
         document.getElementById('tempNome').value = '';
         document.getElementById('alertaForm').style.display = 'none';
         document.getElementById('modalCriar').style.display = 'flex';
     }
+}
+
+function abrirModalEditar() {
+    if (!eventoAtual) return;
+
+    document.getElementById('editIdEvento').value = eventoAtual.id_eventos;
+    document.getElementById('editNome').value = eventoAtual.nome;
+
+    if (eventoAtual.tipo === 'Prova') document.getElementById('editTipoProva').checked = true;
+    else if (eventoAtual.tipo === 'Trabalho') document.getElementById('editTipoTrabalho').checked = true;
+    else if (eventoAtual.tipo === 'Evento') document.getElementById('editTipoEvento').checked = true;
+
+    document.getElementById('modalVer').style.display = 'none';
+    document.getElementById('modalEditar').style.display = 'flex';
 }
 
 function abrirConfirmacao() {
@@ -376,7 +495,6 @@ function fecharModais() {
     });
 }
 
-// Proteção contra retorno via navegador pós-logout
 window.onpageshow = function(event) {
     if (event.persisted || (performance && performance.navigation.type === 2)) {
         document.body.innerHTML = '';

@@ -231,3 +231,29 @@ CREATE TABLE tentativas_login (
 );
 
 select * from tentativas_login;
+
+ALTER TABLE turma ADD COLUMN periodo VARCHAR(20);
+ALTER TABLE turma modify COLUMN periodo CHAR(1);
+
+update turma set periodo='I' where id_turma=1;
+update turma set periodo='I' where id_turma=2;
+update turma set periodo='I' where id_turma=3;
+update turma set periodo='I' where id_turma=4;
+update turma set periodo='I' where id_turma=5;
+update turma set periodo='I' where id_turma=6;
+update turma set periodo='I' where id_turma=7;
+update turma set periodo='I' where id_turma=8;
+update turma set periodo='I' where id_turma=9;
+update turma set periodo='I' where id_turma=10;
+
+INSERT INTO turma (serie, curso, id_coordenador, periodo) VALUES 
+('1°', 'DS', 1, 'N'),
+('2°', 'DS', 1, 'N'),
+('1°', 'ADM', 1, 'N'),
+('2°', 'ADM', 1, 'N'),
+('1°', 'RH', 1, 'N'),
+('2°', 'ELE', 1, 'N');
+
+ALTER TABLE turma modify COLUMN curso ENUM('DS', 'ADM', 'AUT', 'RH', 'ELE');
+
+update turma set curso='ELE' where id_turma=16;

@@ -27,7 +27,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     <a href="#" class="has-submenu">A Etec</a>
              <ul class="submenu">
                 <li>
-                <a href="php/calendario.php">Eventos</a>
+                <a href="php/eventos_login.php">Eventos</a>
         </li>
     </ul>
 </li>
@@ -64,22 +64,30 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
 
         <div class="card-lab">
             <h2>Laboratórios<br>ADM</h2>
-            <a href="../TCC/php/agendamento_adm.php" class="btn-agendar">Agendar</a>
+            <a href="#" class="btn-agendar">Agendar</a>
 
         </div>
     
         <div class="card-lab">
             <h2>Laboratórios<br>AUT</h2>
-            <a href="..TCC/php/agendamento_aut.php" class="btn-agendar">Agendar</a>
+            <a href="#" class="btn-agendar">Agendar</a>
         </div>
     
         <div class="card-lab">
             <h2>Laboratórios<br>DS</h2>
-            <a href="../TCC/php/agendamento.php" class="btn-agendar">Agendar</a>
+            <a href="../TCC/php/agendamento.php   " class="btn-agendar">Agendar</a>
         </div>
     
     </div>
 </body>
 </html>
 
-
+<script>
+window.onpageshow = function(event) {
+    if (event.persisted || (performance && performance.navigation.type === 2)) {
+        // Se veio do botão voltar, esconde o corpo do site e redireciona
+        document.body.innerHTML = '';
+        window.location.replace("login.php");
+    }
+};
+</script>

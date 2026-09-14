@@ -1,10 +1,7 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['usuario_id'])) {
-    header("Location: login.php");
-    exit();
-}
+
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
@@ -179,27 +176,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_evento'])) {
     if ($id_evento_del > 0 && isset($turma_representante)) {
 
         /*
-         * Só exclui o evento se ele pertencer à turma
-         * do representante autenticado.
+         * Primeiro verificamos se o evento realmente
+         * pertence à turma do representante.
          */
-        $stmt_del = mysqli_prepare(
+        $stmt_verifica = mysqli_prepare(
             $conexao,
-            "DELETE c, e
-             FROM calendario c
-             INNER JOIN eventos e ON e.id_eventos = c.id_eventos
-             WHERE c.id_eventos = ?
-             AND c.id_turma = ?"
+            "SELECT id_eventos
+             FROM calendario
+             WHERE id_eventos = ?
+             AND id_turma = ?
+             LIMIT 1"
         );
 
-        if ($stmt_del) {
+        if ($stmt_verifica) {
+
             mysqli_stmt_bind_param(
-                $stmt_del,
+                $stmt_verifica,
                 "ii",
                 $id_evento_del,
                 $turma_representante
             );
-            mysqli_stmt_execute($stmt_del);
-            mysqli_stmt_close($stmt_del);
+
+            mysqli_stmt_execute($stmt_verifica);
+
+            $resultado = mysqli_stmt_get_result($stmt_verifica);
+            $evento_existe = mysqli_fetch_assoc($resultado);
+
+            mysqli_stmt_close($stmt_verifica);
+
+            if ($evento_existe) {
+
+                /*
+                 * 1º - Remove o vínculo do evento com a turma.
+                 */
+                $stmt_del_cal = mysqli_prepare(
+                    $conexao,
+                    "DELETE FROM calendario
+                     WHERE id_eventos = ?
+                     AND id_turma = ?"
+                );
+
+                if ($stmt_del_cal) {
+
+                    mysqli_stmt_bind_param(
+                        $stmt_del_cal,
+                        "ii",
+                        $id_evento_del,
+                        $turma_representante
+                    );
+
+                    mysqli_stmt_execute($stmt_del_cal);
+                    mysqli_stmt_close($stmt_del_cal);
+                }
+
+                /*
+                 * 2º - Remove o evento da tabela eventos.
+                 */
+                $stmt_del_evento = mysqli_prepare(
+                    $conexao,
+                    "DELETE FROM eventos
+                     WHERE id_eventos = ?"
+                );
+
+                if ($stmt_del_evento) {
+
+                    mysqli_stmt_bind_param(
+                        $stmt_del_evento,
+                        "i",
+                        $id_evento_del
+                    );
+
+                    mysqli_stmt_execute($stmt_del_evento);
+                    mysqli_stmt_close($stmt_del_evento);
+                }
+            }
         }
     }
 
@@ -209,6 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_evento'])) {
         "&mes=" . $mes_atual .
         "&ano=" . $ano_atual
     );
+
     exit();
 }
 
@@ -883,6 +934,10 @@ $param_turma = $id_turma_selecionada
 <div class="modal-overlay" id="modalExcluir">
 
     <div class="modal-card modal-card-centered">
+
+    <button class="btn-close-corner" data-fechar-modal>
+            <i class="fa-solid fa-xmark"></i>
+        </button>
 
         <div class="icone-confirmacao-exclusao">
             <i class="fa-solid fa-trash"></i>

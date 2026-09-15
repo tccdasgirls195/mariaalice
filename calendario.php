@@ -982,9 +982,278 @@ $param_turma = $id_turma_selecionada
         turmaSelecionada: <?= json_encode($id_turma_selecionada) ?>,
         modoEditor: <?= $modo_editor ? 'true' : 'false' ?>
     };
+
+    const config = window.CALENDARIO_CONFIG || {};
+
+let dataSelecionada = null;
+let eventosDoDia = [];
+let eventoAtual = null;
+
+const modalAviso = document.getElementById("modalAviso");
+const modalCriar = document.getElementById("modalCriar");
+const modalConfirmar = document.getElementById("modalConfirmar");
+const modalVer = document.getElementById("modalVer");
+const modalEditar = document.getElementById("modalEditar");
+const modalExcluir = document.getElementById("modalExcluir");
+
+function abrirModal(modal) {
+    if (modal) {
+        modal.classList.add("modal-aberto");
+    }
+}
+
+function fecharModais() {
+    document.querySelectorAll(".modal-overlay").forEach(function (modal) {
+        modal.classList.remove("modal-aberto");
+    });
+}
+
+document.querySelectorAll("[data-fechar-modal]").forEach(function (botao) {
+    botao.addEventListener("click", fecharModais);
+});
+
+document.querySelectorAll(".modal-overlay").forEach(function (modal) {
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) {
+            fecharModais();
+        }
+    });
+});
+
+function formatarData(data) {
+    const partes = data.split("-");
+
+    if (partes.length !== 3) {
+        return data;
+    }
+
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function classeTipo(tipo) {
+    if (tipo === "Prova") {
+        return "dot-red-solid";
+    }
+
+    if (tipo === "Trabalho") {
+        return "dot-yellow-solid";
+    }
+
+    return "dot-blue-solid";
+}
+
+function mostrarEventos(eventos) {
+    const lista = document.getElementById("listaEventos");
+
+    if (!lista) {
+        return;
+    }
+
+    lista.innerHTML = "";
+
+    eventos.forEach(function (evento, indice) {
+
+        const item = document.createElement("div");
+        item.className = "evento-detalhe";
+
+        item.innerHTML = `
+            <div class="evento-detalhe-topo">
+                <span class="dot ${classeTipo(evento.tipo)}"></span>
+                <strong>${escapeHtml(evento.nome)}</strong>
+            </div>
+
+            <p>Data: ${formatarData(evento.data_evento)}</p>
+            <p>Tipo: ${escapeHtml(evento.tipo)}</p>
+        `;
+
+        item.dataset.index = indice;
+
+        item.addEventListener("click", function () {
+            selecionarEvento(indice);
+        });
+
+        lista.appendChild(item);
+    });
+
+    selecionarEvento(0);
+}
+
+function selecionarEvento(indice) {
+    if (!eventosDoDia[indice]) {
+        return;
+    }
+
+    eventoAtual = eventosDoDia[indice];
+
+    document.querySelectorAll(".evento-detalhe").forEach(function (item) {
+        item.classList.remove("evento-selecionado");
+    });
+
+    const selecionado = document.querySelector(
+        `.evento-detalhe[data-index="${indice}"]`
+    );
+
+    if (selecionado) {
+        selecionado.classList.add("evento-selecionado");
+    }
+}
+
+function clicarDia(elemento) {
+
+    const data = elemento.dataset.date;
+
+    let eventos = [];
+
+    try {
+        eventos = JSON.parse(elemento.dataset.events || "[]");
+    } catch (erro) {
+        eventos = [];
+    }
+
+    dataSelecionada = data;
+    eventosDoDia = eventos;
+
+    if (!config.turmaSelecionada) {
+        abrirModal(modalAviso);
+        return;
+    }
+
+    if (eventos.length > 0) {
+
+        mostrarEventos(eventos);
+        abrirModal(modalVer);
+
+        return;
+    }
+
+    if (config.modoEditor) {
+
+        const tempNome = document.getElementById("tempNome");
+        const alerta = document.getElementById("alertaForm");
+
+        if (tempNome) {
+            tempNome.value = "";
+        }
+
+        if (alerta) {
+            alerta.classList.remove("alerta-visivel");
+        }
+
+        abrirModal(modalCriar);
+    }
+}
+
+document.querySelectorAll(".calendar-day:not(.empty-day)").forEach(function (dia) {
+    dia.addEventListener("click", function () {
+        clicarDia(this);
+    });
+});
+
+const btnAbrirConfirmacao = document.getElementById("btnAbrirConfirmacao");
+
+if (btnAbrirConfirmacao) {
+
+    btnAbrirConfirmacao.addEventListener("click", function () {
+
+        const nomeCampo = document.getElementById("tempNome");
+        const alerta = document.getElementById("alertaForm");
+
+        const nome = nomeCampo ? nomeCampo.value.trim() : "";
+
+        if (!nome) {
+
+            if (alerta) {
+                alerta.classList.add("alerta-visivel");
+            }
+
+            return;
+        }
+
+        const tipoSelecionado =
+            document.querySelector('input[name="tempTipo"]:checked');
+
+        if (!tipoSelecionado) {
+            return;
+        }
+
+        document.getElementById("finalData").value = dataSelecionada;
+        document.getElementById("finalNome").value = nome;
+        document.getElementById("finalTipo").value = tipoSelecionado.value;
+
+        fecharModais();
+        abrirModal(modalConfirmar);
+    });
+}
+
+const btnEditarEvento = document.getElementById("btnEditarEvento");
+
+if (btnEditarEvento) {
+
+    btnEditarEvento.addEventListener("click", function () {
+
+        if (!eventoAtual) {
+            return;
+        }
+
+        document.getElementById("editIdEvento").value =
+            eventoAtual.id_eventos;
+
+        document.getElementById("editNome").value =
+            eventoAtual.nome;
+
+        document.getElementById("editTipoProva").checked =
+            eventoAtual.tipo === "Prova";
+
+        document.getElementById("editTipoTrabalho").checked =
+            eventoAtual.tipo === "Trabalho";
+
+        document.getElementById("editTipoEvento").checked =
+            eventoAtual.tipo === "Evento";
+
+        fecharModais();
+        abrirModal(modalEditar);
+    });
+}
+
+const btnExcluirEvento = document.getElementById("btnExcluirEvento");
+
+if (btnExcluirEvento) {
+
+    btnExcluirEvento.addEventListener("click", function () {
+
+        if (!eventoAtual) {
+            return;
+        }
+
+        document.getElementById("delIdEvento").value =
+            eventoAtual.id_eventos;
+
+        fecharModais();
+        abrirModal(modalExcluir);
+    });
+}
+
+function escapeHtml(texto) {
+    const div = document.createElement("div");
+    div.textContent = texto ?? "";
+    return div.innerHTML;
+}
+
+window.addEventListener("pageshow", function (event) {
+
+    if (
+        event.persisted ||
+        (window.performance &&
+            window.performance.getEntriesByType &&
+            window.performance.getEntriesByType("navigation")[0] &&
+            window.performance.getEntriesByType("navigation")[0].type === "back_forward")
+    ) {
+        window.location.reload();
+    }
+});
 </script>
 
-<script src="../js/calendario.js"></script>
+
 
 </body>
 </html>

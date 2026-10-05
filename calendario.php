@@ -23,6 +23,13 @@ include("conexao.php");
  * da página eventos_login.php pode adicionar, editar ou excluir.
  */
 $modo_editor = isset($_SESSION['eventos_editor']) && $_SESSION['eventos_editor'] === true;
+$modo_gestao = isset($_SESSION['usuario_tipo']) && $_SESSION['usuario_tipo'] === 'gestao';
+
+// Representante e Gestão possuem permissões diferentes:
+// representante -> eventos somente da própria turma
+// gestão -> eventos gerais para todas as turmas
+$pode_gerenciar_eventos = $modo_editor || $modo_gestao;
+
 $id_representante = isset($_SESSION['eventos_representante_id'])
     ? (int)$_SESSION['eventos_representante_id']
     : null;
@@ -86,7 +93,7 @@ if ($mes_atual < 1) {
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_evento'])) {
 
-    if (!$modo_editor) {
+    if (!$pode_gerenciar_eventos) {
         header("Location: calendario.php");
         exit();
     }
@@ -94,17 +101,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_evento'])) {
     $nome = trim($_POST['nome'] ?? '');
     $data_evento = $_POST['data_evento'] ?? '';
     $tipo = $_POST['tipo'] ?? '';
-    $id_turma = (int)($_POST['id_turma'] ?? 0);
 
     $tipos_validos = ['Prova', 'Trabalho', 'Evento'];
+
+    // Gestão cria evento geral: id_turma = NULL.
+    // Representante cria evento somente na própria turma.
+    if ($modo_gestao) {
+        $id_turma = null;
+    } elseif ($modo_editor && isset($turma_representante)) {
+        $id_turma = $turma_representante;
+    } else {
+        $id_turma = null;
+    }
 
     if (
         $nome !== '' &&
         $data_evento !== '' &&
-        $id_turma > 0 &&
         in_array($tipo, $tipos_validos, true) &&
-        isset($turma_representante) &&
-        $id_turma === $turma_representante
+        ($modo_gestao || ($modo_editor && isset($turma_representante)))
     ) {
 
         $stmt_evento = mysqli_prepare(
@@ -128,20 +142,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_evento'])) {
 
                 $id_evento = mysqli_insert_id($conexao);
 
-                $stmt_cal = mysqli_prepare(
-                    $conexao,
-                    "INSERT INTO calendario (id_eventos, id_turma)
-                     VALUES (?, ?)"
-                );
+                if ($id_turma === null) {
+                    $stmt_cal = mysqli_prepare(
+                        $conexao,
+                        "INSERT INTO calendario (id_eventos, id_turma)
+                         VALUES (?, NULL)"
+                    );
+                } else {
+                    $stmt_cal = mysqli_prepare(
+                        $conexao,
+                        "INSERT INTO calendario (id_eventos, id_turma)
+                         VALUES (?, ?)"
+                    );
+                }
 
                 if ($stmt_cal) {
-                    mysqli_stmt_bind_param(
-                        $stmt_cal,
-                        "ii",
-                        $id_evento,
-                        $id_turma
-                    );
-                    mysqli_stmt_execute($stmt_cal);
+                    if ($id_turma === null) {
+                        mysqli_stmt_bind_param($stmt_cal, "i", $id_evento);
+                        mysqli_stmt_execute($stmt_cal);
+                    } else {
+                        mysqli_stmt_bind_param(
+                            $stmt_cal,
+                            "ii",
+                            $id_evento,
+                            $id_turma
+                        );
+                        mysqli_stmt_execute($stmt_cal);
+                    }
                     mysqli_stmt_close($stmt_cal);
                 }
             }
@@ -166,86 +193,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_evento'])) {
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_evento'])) {
 
-    if (!$modo_editor) {
+    if (!$pode_gerenciar_eventos) {
         header("Location: calendario.php");
         exit();
     }
 
     $id_evento_del = (int)($_POST['id_evento'] ?? 0);
 
-    if ($id_evento_del > 0 && isset($turma_representante)) {
+    if ($id_evento_del > 0) {
 
-        /*
-         * Primeiro verificamos se o evento realmente
-         * pertence à turma do representante.
-         */
-        $stmt_verifica = mysqli_prepare(
-            $conexao,
-            "SELECT id_eventos
-             FROM calendario
-             WHERE id_eventos = ?
-             AND id_turma = ?
-             LIMIT 1"
-        );
+        // Gestão só pode excluir eventos gerais.
+        // Representante só pode excluir eventos da própria turma.
+        if ($modo_gestao) {
+            $stmt_verifica = mysqli_prepare(
+                $conexao,
+                "SELECT id_eventos FROM calendario
+                 WHERE id_eventos = ? AND id_turma IS NULL
+                 LIMIT 1"
+            );
+        } elseif (isset($turma_representante)) {
+            $stmt_verifica = mysqli_prepare(
+                $conexao,
+                "SELECT id_eventos FROM calendario
+                 WHERE id_eventos = ? AND id_turma = ?
+                 LIMIT 1"
+            );
+        } else {
+            $stmt_verifica = false;
+        }
 
         if ($stmt_verifica) {
-
-            mysqli_stmt_bind_param(
-                $stmt_verifica,
-                "ii",
-                $id_evento_del,
-                $turma_representante
-            );
+            if ($modo_gestao) {
+                mysqli_stmt_bind_param($stmt_verifica, "i", $id_evento_del);
+            } else {
+                mysqli_stmt_bind_param($stmt_verifica, "ii", $id_evento_del, $turma_representante);
+            }
 
             mysqli_stmt_execute($stmt_verifica);
-
             $resultado = mysqli_stmt_get_result($stmt_verifica);
             $evento_existe = mysqli_fetch_assoc($resultado);
-
             mysqli_stmt_close($stmt_verifica);
 
             if ($evento_existe) {
-
-                /*
-                 * 1º - Remove o vínculo do evento com a turma.
-                 */
-                $stmt_del_cal = mysqli_prepare(
-                    $conexao,
-                    "DELETE FROM calendario
-                     WHERE id_eventos = ?
-                     AND id_turma = ?"
-                );
-
-                if ($stmt_del_cal) {
-
-                    mysqli_stmt_bind_param(
-                        $stmt_del_cal,
-                        "ii",
-                        $id_evento_del,
-                        $turma_representante
+                // Remove o vínculo correto.
+                if ($modo_gestao) {
+                    $stmt_del_cal = mysqli_prepare(
+                        $conexao,
+                        "DELETE FROM calendario WHERE id_eventos = ? AND id_turma IS NULL"
                     );
-
-                    mysqli_stmt_execute($stmt_del_cal);
-                    mysqli_stmt_close($stmt_del_cal);
+                    if ($stmt_del_cal) {
+                        mysqli_stmt_bind_param($stmt_del_cal, "i", $id_evento_del);
+                        mysqli_stmt_execute($stmt_del_cal);
+                        mysqli_stmt_close($stmt_del_cal);
+                    }
+                } else {
+                    $stmt_del_cal = mysqli_prepare(
+                        $conexao,
+                        "DELETE FROM calendario WHERE id_eventos = ? AND id_turma = ?"
+                    );
+                    if ($stmt_del_cal) {
+                        mysqli_stmt_bind_param($stmt_del_cal, "ii", $id_evento_del, $turma_representante);
+                        mysqli_stmt_execute($stmt_del_cal);
+                        mysqli_stmt_close($stmt_del_cal);
+                    }
                 }
 
-                /*
-                 * 2º - Remove o evento da tabela eventos.
-                 */
                 $stmt_del_evento = mysqli_prepare(
                     $conexao,
-                    "DELETE FROM eventos
-                     WHERE id_eventos = ?"
+                    "DELETE FROM eventos WHERE id_eventos = ?"
                 );
-
                 if ($stmt_del_evento) {
-
-                    mysqli_stmt_bind_param(
-                        $stmt_del_evento,
-                        "i",
-                        $id_evento_del
-                    );
-
+                    mysqli_stmt_bind_param($stmt_del_evento, "i", $id_evento_del);
                     mysqli_stmt_execute($stmt_del_evento);
                     mysqli_stmt_close($stmt_del_evento);
                 }
@@ -270,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['excluir_evento'])) {
  */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evento'])) {
 
-    if (!$modo_editor) {
+    if (!$pode_gerenciar_eventos) {
         header("Location: calendario.php");
         exit();
     }
@@ -285,28 +303,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evento'])) {
         $id_evento_edit > 0 &&
         $nome_edit !== '' &&
         in_array($tipo_edit, $tipos_validos, true) &&
-        isset($turma_representante)
+        ($modo_gestao || isset($turma_representante))
     ) {
 
-        $stmt_edit = mysqli_prepare(
-            $conexao,
-            "UPDATE eventos e
-             INNER JOIN calendario c ON c.id_eventos = e.id_eventos
-             SET e.nome = ?, e.descr = ?, e.tipo = ?
-             WHERE e.id_eventos = ?
-             AND c.id_turma = ?"
-        );
+        if ($modo_gestao) {
+            $stmt_edit = mysqli_prepare(
+                $conexao,
+                "UPDATE eventos e
+                 INNER JOIN calendario c ON c.id_eventos = e.id_eventos
+                 SET e.nome = ?, e.descr = ?, e.tipo = ?
+                 WHERE e.id_eventos = ?
+                 AND c.id_turma IS NULL"
+            );
+        } elseif (isset($turma_representante)) {
+            $stmt_edit = mysqli_prepare(
+                $conexao,
+                "UPDATE eventos e
+                 INNER JOIN calendario c ON c.id_eventos = e.id_eventos
+                 SET e.nome = ?, e.descr = ?, e.tipo = ?
+                 WHERE e.id_eventos = ?
+                 AND c.id_turma = ?"
+            );
+        } else {
+            $stmt_edit = false;
+        }
 
         if ($stmt_edit) {
-            mysqli_stmt_bind_param(
-                $stmt_edit,
-                "sssii",
-                $nome_edit,
-                $nome_edit,
-                $tipo_edit,
-                $id_evento_edit,
-                $turma_representante
-            );
+            if ($modo_gestao) {
+                mysqli_stmt_bind_param(
+                    $stmt_edit,
+                    "sssi",
+                    $nome_edit, $nome_edit, $tipo_edit, $id_evento_edit
+                );
+            } else {
+                mysqli_stmt_bind_param(
+                    $stmt_edit,
+                    "sssii",
+                    $nome_edit, $nome_edit, $tipo_edit, $id_evento_edit, $turma_representante
+                );
+            }
 
             mysqli_stmt_execute($stmt_edit);
             mysqli_stmt_close($stmt_edit);
@@ -330,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evento'])) {
 $eventos_cadastrados = [];
 $nome_turma_atual = "";
 
-if ($id_turma_selecionada) {
+if ($id_turma_selecionada && !$modo_gestao) {
 
     $stmt_turma = mysqli_prepare(
         $conexao,
@@ -359,10 +394,10 @@ if ($id_turma_selecionada) {
      */
     $stmt_busca = mysqli_prepare(
         $conexao,
-        "SELECT e.id_eventos, e.nome, e.descr, e.data_evento, e.tipo
+        "SELECT e.id_eventos, e.nome, e.descr, e.data_evento, e.tipo, c.id_turma
          FROM eventos e
          INNER JOIN calendario c ON e.id_eventos = c.id_eventos
-         WHERE c.id_turma = ?
+         WHERE c.id_turma = ? OR c.id_turma IS NULL
          ORDER BY e.data_evento ASC, e.id_eventos ASC"
     );
 
@@ -390,6 +425,32 @@ if ($id_turma_selecionada) {
         }
 
         mysqli_stmt_close($stmt_busca);
+    }
+}
+
+// Gestão visualiza somente os eventos gerais.
+if ($modo_gestao) {
+    $stmt_busca_gerais = mysqli_prepare(
+        $conexao,
+        "SELECT e.id_eventos, e.nome, e.descr, e.data_evento, e.tipo, c.id_turma
+         FROM eventos e
+         INNER JOIN calendario c ON e.id_eventos = c.id_eventos
+         WHERE c.id_turma IS NULL
+         ORDER BY e.data_evento ASC, e.id_eventos ASC"
+    );
+
+    if ($stmt_busca_gerais) {
+        mysqli_stmt_execute($stmt_busca_gerais);
+        $res_gerais = mysqli_stmt_get_result($stmt_busca_gerais);
+
+        while ($row = mysqli_fetch_assoc($res_gerais)) {
+            $data_evento = $row['data_evento'];
+            if (!isset($eventos_cadastrados[$data_evento])) {
+                $eventos_cadastrados[$data_evento] = [];
+            }
+            $eventos_cadastrados[$data_evento][] = $row;
+        }
+        mysqli_stmt_close($stmt_busca_gerais);
     }
 }
 
@@ -456,7 +517,7 @@ if ($mes_proximo > 12) {
     $ano_proximo++;
 }
 
-$param_turma = $id_turma_selecionada
+$param_turma = (!$modo_gestao && $id_turma_selecionada)
     ? "&turma=" . $id_turma_selecionada
     : "";
 ?>
@@ -469,10 +530,10 @@ $param_turma = $id_turma_selecionada
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Calendário de Eventos - Etec</title>
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="../css/calendario.css">
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body>
@@ -489,18 +550,6 @@ $param_turma = $id_turma_selecionada
         <a href="#" class="has-submenu">Cursos</a>
         <a href="#" class="has-submenu">A Etec</a>
         <a href="#" class="has-submenu">Equipe Etec</a>
-
-        <li>
-            <a href="../selecionar_lab.html" class="has-submenu">Agendamento</a>
-
-            <ul class="submenu">
-                <li>
-                    <a href="meus-agendamentos.php">
-                        Meus agendamentos
-                    </a>
-                </li>
-            </ul>
-        </li>
 
         <a href="#" class="has-submenu">Notícias</a>
         <a href="">Empregos & Estágios</a>
@@ -527,65 +576,51 @@ $param_turma = $id_turma_selecionada
 
 <section class="dropdown-container">
 
-    <button class="btn-dropdown">
-        <?= $nome_turma_atual
-            ? "Eventos - " . htmlspecialchars($nome_turma_atual)
-            : "Eventos" ?>
+    <?php if ($modo_gestao): ?>
 
-        <i class="fa-solid fa-chevron-down"></i>
-    </button>
+        <div class="btn-dropdown eventos-gestao">
+            Eventos
+        </div>
 
-    <div class="dropdown-menu">
+    <?php else: ?>
 
-        <div class="menu-item-periodo">
+        <button class="btn-dropdown">
+            <?= $nome_turma_atual
+                ? "Eventos - " . htmlspecialchars($nome_turma_atual)
+                : "Eventos" ?>
 
-            <span>Integral</span>
+            <i class="fa-solid fa-chevron-down"></i>
+        </button>
 
-            <i class="fa-solid fa-chevron-right seta"></i>
+        <div class="dropdown-menu">
 
-            <div class="submenu-turmas">
+            <div class="menu-item-periodo">
+                <span>Integral</span>
+                <i class="fa-solid fa-chevron-right seta"></i>
+                <div class="submenu-turmas">
+                    <?php foreach ($turmas_integral as $t): ?>
+                        <a href="calendario.php?turma=<?= (int)$t['id_turma'] ?>&mes=<?= $mes_atual ?>&ano=<?= $ano_atual ?>">
+                            <?= htmlspecialchars($t['serie'] . ' ' . $t['curso']) ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
 
-                <?php foreach ($turmas_integral as $t): ?>
-
-                    <a href="calendario.php?turma=<?= (int)$t['id_turma'] ?>&mes=<?= $mes_atual ?>&ano=<?= $ano_atual ?>">
-
-                        <?= htmlspecialchars(
-                            $t['serie'] . ' ' . $t['curso']
-                        ) ?>
-
-                    </a>
-
-                <?php endforeach; ?>
-
+            <div class="menu-item-periodo">
+                <span>Noturno</span>
+                <i class="fa-solid fa-chevron-right seta"></i>
+                <div class="submenu-turmas">
+                    <?php foreach ($turmas_noturno as $t): ?>
+                        <a href="calendario.php?turma=<?= (int)$t['id_turma'] ?>&mes=<?= $mes_atual ?>&ano=<?= $ano_atual ?>">
+                            <?= htmlspecialchars($t['serie'] . ' ' . $t['curso']) ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
 
         </div>
 
-        <div class="menu-item-periodo">
-
-            <span>Noturno</span>
-
-            <i class="fa-solid fa-chevron-right seta"></i>
-
-            <div class="submenu-turmas">
-
-                <?php foreach ($turmas_noturno as $t): ?>
-
-                    <a href="calendario.php?turma=<?= (int)$t['id_turma'] ?>&mes=<?= $mes_atual ?>&ano=<?= $ano_atual ?>">
-
-                        <?= htmlspecialchars(
-                            $t['serie'] . ' ' . $t['curso']
-                        ) ?>
-
-                    </a>
-
-                <?php endforeach; ?>
-
-            </div>
-
-        </div>
-
-    </div>
+    <?php endif; ?>
 
 </section>
 
@@ -778,7 +813,7 @@ $param_turma = $id_turma_selecionada
         <form method="POST">
 
             <input type="hidden" name="salvar_evento" value="1">
-            <input type="hidden" name="id_turma" value="<?= (int)$id_turma_selecionada ?>">
+            <input type="hidden" name="id_turma" value="<?= $modo_gestao ? "" : (int)$id_turma_selecionada ?>">
             <input type="hidden" name="data_evento" id="finalData">
             <input type="hidden" name="nome" id="finalNome">
             <input type="hidden" name="tipo" id="finalTipo">
@@ -815,7 +850,7 @@ $param_turma = $id_turma_selecionada
 
         <div id="listaEventos" class="lista-eventos"></div>
 
-        <?php if ($modo_editor): ?>
+        <?php if ($pode_gerenciar_eventos): ?>
 
             <div class="modal-actions ver-actions">
 
@@ -840,11 +875,6 @@ $param_turma = $id_turma_selecionada
             </div>
 
         <?php else: ?>
-
-            <p class="somente-visualizacao">
-                <i class="fa-solid fa-eye"></i>
-                Modo somente visualização
-            </p>
 
         <?php endif; ?>
 
@@ -980,280 +1010,685 @@ $param_turma = $id_turma_selecionada
 <script>
     window.CALENDARIO_CONFIG = {
         turmaSelecionada: <?= json_encode($id_turma_selecionada) ?>,
-        modoEditor: <?= $modo_editor ? 'true' : 'false' ?>
+        modoEditor: <?= $modo_editor ? 'true' : 'false' ?>,
+        modoGestao: <?= $modo_gestao ? 'true' : 'false' ?>
     };
 
-    const config = window.CALENDARIO_CONFIG || {};
+    document.addEventListener("DOMContentLoaded", function () {
 
-let dataSelecionada = null;
-let eventosDoDia = [];
-let eventoAtual = null;
+        /*
+         * ==========================================
+         * CONFIGURAÇÃO
+         * ==========================================
+         */
 
-const modalAviso = document.getElementById("modalAviso");
-const modalCriar = document.getElementById("modalCriar");
-const modalConfirmar = document.getElementById("modalConfirmar");
-const modalVer = document.getElementById("modalVer");
-const modalEditar = document.getElementById("modalEditar");
-const modalExcluir = document.getElementById("modalExcluir");
+        const config = window.CALENDARIO_CONFIG;
 
-function abrirModal(modal) {
-    if (modal) {
-        modal.classList.add("modal-aberto");
-    }
-}
 
-function fecharModais() {
-    document.querySelectorAll(".modal-overlay").forEach(function (modal) {
-        modal.classList.remove("modal-aberto");
-    });
-}
+        /*
+         * ==========================================
+         * MODAIS
+         * ==========================================
+         */
 
-document.querySelectorAll("[data-fechar-modal]").forEach(function (botao) {
-    botao.addEventListener("click", fecharModais);
-});
+        const modalAviso = document.getElementById("modalAviso");
+        const modalCriar = document.getElementById("modalCriar");
+        const modalConfirmar = document.getElementById("modalConfirmar");
+        const modalVer = document.getElementById("modalVer");
+        const modalEditar = document.getElementById("modalEditar");
+        const modalExcluir = document.getElementById("modalExcluir");
 
-document.querySelectorAll(".modal-overlay").forEach(function (modal) {
-    modal.addEventListener("click", function (event) {
-        if (event.target === modal) {
-            fecharModais();
-        }
-    });
-});
 
-function formatarData(data) {
-    const partes = data.split("-");
+        /*
+         * ==========================================
+         * FUNÇÕES PARA ABRIR E FECHAR MODAIS
+         * ==========================================
+         */
 
-    if (partes.length !== 3) {
-        return data;
-    }
+        function abrirModal(modal) {
 
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-}
-
-function classeTipo(tipo) {
-    if (tipo === "Prova") {
-        return "dot-red-solid";
-    }
-
-    if (tipo === "Trabalho") {
-        return "dot-yellow-solid";
-    }
-
-    return "dot-blue-solid";
-}
-
-function mostrarEventos(eventos) {
-    const lista = document.getElementById("listaEventos");
-
-    if (!lista) {
-        return;
-    }
-
-    lista.innerHTML = "";
-
-    eventos.forEach(function (evento, indice) {
-
-        const item = document.createElement("div");
-        item.className = "evento-detalhe";
-
-        item.innerHTML = `
-            <div class="evento-detalhe-topo">
-                <span class="dot ${classeTipo(evento.tipo)}"></span>
-                <strong>${escapeHtml(evento.nome)}</strong>
-            </div>
-
-            <p>Data: ${formatarData(evento.data_evento)}</p>
-            <p>Tipo: ${escapeHtml(evento.tipo)}</p>
-        `;
-
-        item.dataset.index = indice;
-
-        item.addEventListener("click", function () {
-            selecionarEvento(indice);
-        });
-
-        lista.appendChild(item);
-    });
-
-    selecionarEvento(0);
-}
-
-function selecionarEvento(indice) {
-    if (!eventosDoDia[indice]) {
-        return;
-    }
-
-    eventoAtual = eventosDoDia[indice];
-
-    document.querySelectorAll(".evento-detalhe").forEach(function (item) {
-        item.classList.remove("evento-selecionado");
-    });
-
-    const selecionado = document.querySelector(
-        `.evento-detalhe[data-index="${indice}"]`
-    );
-
-    if (selecionado) {
-        selecionado.classList.add("evento-selecionado");
-    }
-}
-
-function clicarDia(elemento) {
-
-    const data = elemento.dataset.date;
-
-    let eventos = [];
-
-    try {
-        eventos = JSON.parse(elemento.dataset.events || "[]");
-    } catch (erro) {
-        eventos = [];
-    }
-
-    dataSelecionada = data;
-    eventosDoDia = eventos;
-
-    if (!config.turmaSelecionada) {
-        abrirModal(modalAviso);
-        return;
-    }
-
-    if (eventos.length > 0) {
-
-        mostrarEventos(eventos);
-        abrirModal(modalVer);
-
-        return;
-    }
-
-    if (config.modoEditor) {
-
-        const tempNome = document.getElementById("tempNome");
-        const alerta = document.getElementById("alertaForm");
-
-        if (tempNome) {
-            tempNome.value = "";
-        }
-
-        if (alerta) {
-            alerta.classList.remove("alerta-visivel");
-        }
-
-        abrirModal(modalCriar);
-    }
-}
-
-document.querySelectorAll(".calendar-day:not(.empty-day)").forEach(function (dia) {
-    dia.addEventListener("click", function () {
-        clicarDia(this);
-    });
-});
-
-const btnAbrirConfirmacao = document.getElementById("btnAbrirConfirmacao");
-
-if (btnAbrirConfirmacao) {
-
-    btnAbrirConfirmacao.addEventListener("click", function () {
-
-        const nomeCampo = document.getElementById("tempNome");
-        const alerta = document.getElementById("alertaForm");
-
-        const nome = nomeCampo ? nomeCampo.value.trim() : "";
-
-        if (!nome) {
-
-            if (alerta) {
-                alerta.classList.add("alerta-visivel");
+            if (!modal) {
+                return;
             }
 
-            return;
+            modal.style.display = "flex";
+
         }
 
-        const tipoSelecionado =
-            document.querySelector('input[name="tempTipo"]:checked');
 
-        if (!tipoSelecionado) {
-            return;
+        function fecharModal(modal) {
+
+            if (!modal) {
+                return;
+            }
+
+            modal.style.display = "none";
+
         }
 
-        document.getElementById("finalData").value = dataSelecionada;
-        document.getElementById("finalNome").value = nome;
-        document.getElementById("finalTipo").value = tipoSelecionado.value;
 
-        fecharModais();
-        abrirModal(modalConfirmar);
+        /*
+         * ==========================================
+         * GARANTE QUE OS MODAIS COMEÇAM FECHADOS
+         * ==========================================
+         */
+
+        [modalAviso, modalCriar, modalConfirmar, modalVer, modalEditar, modalExcluir]
+            .forEach(function (modal) {
+
+                if (modal) {
+                    modal.style.display = "none";
+                }
+
+            });
+
+
+        /*
+         * ==========================================
+         * BOTÕES DE FECHAR
+         * ==========================================
+         */
+
+        document.querySelectorAll("[data-fechar-modal]").forEach(function (botao) {
+
+            botao.addEventListener("click", function () {
+
+                const modal = botao.closest(".modal-overlay");
+
+                fecharModal(modal);
+
+            });
+
+        });
+
+
+        /*
+         * ==========================================
+         * CLICAR FORA DA CAIXA PARA FECHAR
+         * ==========================================
+         */
+
+        document.querySelectorAll(".modal-overlay").forEach(function (modal) {
+
+            modal.addEventListener("click", function (evento) {
+
+                if (evento.target === modal) {
+
+                    fecharModal(modal);
+
+                }
+
+            });
+
+        });
+
+
+        /*
+         * ==========================================
+         * DROPDOWN DE TURMAS
+         * ==========================================
+         */
+
+        const btnDropdown = document.querySelector(".btn-dropdown");
+        const dropdownMenu = document.querySelector(".dropdown-menu");
+
+        if (btnDropdown && dropdownMenu) {
+
+            btnDropdown.addEventListener("click", function (evento) {
+
+                evento.stopPropagation();
+
+                dropdownMenu.classList.toggle("ativo");
+
+            });
+
+        }
+
+
+        /*
+         * ==========================================
+         * VARIÁVEIS DOS FORMULÁRIOS
+         * ==========================================
+         */
+
+        const tempNome = document.getElementById("tempNome");
+
+        const alertaForm = document.getElementById("alertaForm");
+
+        const btnAbrirConfirmacao =
+            document.getElementById("btnAbrirConfirmacao");
+
+        const finalData =
+            document.getElementById("finalData");
+
+        const finalNome =
+            document.getElementById("finalNome");
+
+        const finalTipo =
+            document.getElementById("finalTipo");
+
+
+        /*
+         * Guarda a data que o representante clicou.
+         */
+
+        let dataSelecionada = null;
+
+
+        /*
+         * Guarda os eventos do dia selecionado.
+         */
+
+        let eventosSelecionados = [];
+        let eventoAcaoSelecionado = null;
+
+
+        /*
+         * ==========================================
+         * CLIQUE NOS DIAS DO CALENDÁRIO
+         * ==========================================
+         */
+
+        const diasCalendario =
+            document.querySelectorAll(".calendar-day:not(.empty-day)");
+
+
+        diasCalendario.forEach(function (dia) {
+
+            dia.addEventListener("click", function () {
+
+                /*
+                 * Pega a data do dia.
+                 */
+
+                dataSelecionada = dia.getAttribute("data-date");
+
+
+                /*
+                 * Pega os eventos daquele dia.
+                 */
+
+                let eventos = [];
+
+                const dadosEventos =
+                    dia.getAttribute("data-events");
+
+
+                if (dadosEventos) {
+
+                    try {
+
+                        eventos = JSON.parse(dadosEventos);
+
+                    } catch (erro) {
+
+                        console.error(
+                            "Erro ao carregar os eventos:",
+                            erro
+                        );
+
+                        eventos = [];
+
+                    }
+
+                }
+
+
+                eventosSelecionados = eventos;
+
+
+                /*
+                 * ==================================
+                 * SE NÃO EXISTE TURMA SELECIONADA
+                 * ==================================
+                 */
+
+                if (!config.turmaSelecionada && !config.modoGestao) {
+
+                    abrirModal(modalAviso);
+
+                    return;
+
+                }
+
+
+                /*
+                 * ==================================
+                 * SE JÁ EXISTE EVENTO
+                 * ==================================
+                 */
+
+                if (eventos.length > 0) {
+
+                    abrirModalVer(eventos);
+
+                    return;
+
+                }
+
+
+                /*
+                 * ==================================
+                 * SE NÃO É REPRESENTANTE
+                 * ==================================
+                 */
+
+                if (!config.modoEditor && !config.modoGestao) {
+                    return;
+                }
+
+
+                /*
+                 * ==================================
+                 * REPRESENTANTE PODE ADICIONAR
+                 * ==================================
+                 */
+
+                if (tempNome) {
+                    tempNome.value = "";
+                }
+
+                if (alertaForm) {
+                    alertaForm.style.display = "none";
+                }
+
+
+                /*
+                 * Coloca o tipo Prova como padrão.
+                 */
+
+                const tipoPadrao =
+                    document.querySelector(
+                        'input[name="tempTipo"][value="Prova"]'
+                    );
+
+                if (tipoPadrao) {
+                    tipoPadrao.checked = true;
+                }
+
+
+                /*
+                 * Abre o modal de criação.
+                 */
+
+                abrirModal(modalCriar);
+
+            });
+
+        });
+
+
+        /*
+         * ==========================================
+         * ABRIR MODAL DE VISUALIZAÇÃO
+         * ==========================================
+         */
+
+        function abrirModalVer(eventos) {
+
+            const listaEventos =
+                document.getElementById("listaEventos");
+
+
+            if (!listaEventos) {
+                return;
+            }
+
+
+            listaEventos.innerHTML = "";
+
+            // Define qual evento poderá ser editado/excluído.
+            // Gestão -> somente eventos gerais.
+            // Representante -> somente eventos da própria turma.
+            eventoAcaoSelecionado = eventos.find(function (evento) {
+                if (config.modoGestao) {
+                    return evento.id_turma === null || evento.id_turma === undefined || evento.id_turma === "";
+                }
+
+                if (config.modoEditor) {
+                    return String(evento.id_turma) === String(config.turmaSelecionada);
+                }
+
+                return false;
+            }) || null;
+
+            if (btnEditarEvento) {
+                btnEditarEvento.style.display = eventoAcaoSelecionado ? "inline-flex" : "none";
+            }
+
+            if (btnExcluirEvento) {
+                btnExcluirEvento.style.display = eventoAcaoSelecionado ? "inline-flex" : "none";
+            }
+
+            eventos.forEach(function (evento) {
+
+                const item =
+                    document.createElement("div");
+
+                item.className = "evento-item";
+
+
+                const titulo =
+                    document.createElement("strong");
+
+                titulo.textContent =
+                    evento.tipo;
+
+
+                const descricao =
+                    document.createElement("p");
+
+                descricao.textContent =
+                    evento.nome;
+
+
+                item.appendChild(titulo);
+                item.appendChild(descricao);
+
+
+                listaEventos.appendChild(item);
+
+            });
+
+
+            abrirModal(modalVer);
+
+        }
+
+
+        /*
+         * ==========================================
+         * BOTÃO "ADICIONAR" DO PRIMEIRO MODAL
+         * ==========================================
+         */
+
+        if (btnAbrirConfirmacao) {
+
+            btnAbrirConfirmacao.addEventListener(
+                "click",
+                function () {
+
+                    const nome =
+                        tempNome.value.trim();
+
+
+                    /*
+                     * Verifica descrição.
+                     */
+
+                    if (nome === "") {
+
+                        if (alertaForm) {
+
+                            alertaForm.textContent =
+                                "Por favor, preencha a descrição do evento.";
+
+                            alertaForm.style.display = "block";
+
+                        }
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Verifica a data.
+                     */
+
+                    if (!dataSelecionada) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Pega o tipo escolhido.
+                     */
+
+                    const tipoSelecionado =
+                        document.querySelector(
+                            'input[name="tempTipo"]:checked'
+                        );
+
+
+                    if (!tipoSelecionado) {
+
+                        if (alertaForm) {
+
+                            alertaForm.textContent =
+                                "Selecione o tipo do evento.";
+
+                            alertaForm.style.display = "block";
+
+                        }
+
+                        return;
+
+                    }
+
+
+                    /*
+                     * Coloca os valores no formulário
+                     * de confirmação.
+                     */
+
+                    finalData.value =
+                        dataSelecionada;
+
+                    finalNome.value =
+                        nome;
+
+                    finalTipo.value =
+                        tipoSelecionado.value;
+
+
+                    /*
+                     * Fecha o primeiro modal.
+                     */
+
+                    fecharModal(modalCriar);
+
+
+                    /*
+                     * Abre confirmação.
+                     */
+
+                    abrirModal(modalConfirmar);
+
+                }
+            );
+
+        }
+
+
+        /*
+         * ==========================================
+         * EDITAR EVENTO
+         * ==========================================
+         */
+
+        const btnEditarEvento =
+            document.getElementById("btnEditarEvento");
+
+        if (btnEditarEvento) {
+
+            btnEditarEvento.addEventListener(
+                "click",
+                function () {
+
+                    if (!config.modoEditor && !config.modoGestao) {
+                        return;
+                    }
+
+
+                    if (eventosSelecionados.length === 0) {
+                        return;
+                    }
+
+
+                    /*
+                     * Pega o primeiro evento.
+                     */
+
+                    const evento = eventoAcaoSelecionado;
+
+                    if (!evento) {
+                        return;
+                    }
+
+                    document.getElementById("editIdEvento").value =
+                        evento.id_eventos;
+
+
+                    document.getElementById("editNome").value =
+                        evento.nome;
+
+
+                    /*
+                     * Limpa os radio buttons.
+                     */
+
+                    document.getElementById("editTipoProva").checked =
+                        false;
+
+                    document.getElementById("editTipoTrabalho").checked =
+                        false;
+
+                    document.getElementById("editTipoEvento").checked =
+                        false;
+
+
+                    /*
+                     * Marca o tipo correto.
+                     */
+
+                    if (evento.tipo === "Prova") {
+
+                        document.getElementById("editTipoProva").checked =
+                            true;
+
+                    }
+
+                    if (evento.tipo === "Trabalho") {
+
+                        document.getElementById("editTipoTrabalho").checked =
+                            true;
+
+                    }
+
+                    if (evento.tipo === "Evento") {
+
+                        document.getElementById("editTipoEvento").checked =
+                            true;
+
+                    }
+
+
+                    fecharModal(modalVer);
+
+                    abrirModal(modalEditar);
+
+                }
+            );
+
+        }
+
+
+        /*
+         * ==========================================
+         * EXCLUIR EVENTO
+         * ==========================================
+         */
+
+        const btnExcluirEvento =
+            document.getElementById("btnExcluirEvento");
+
+        if (btnExcluirEvento) {
+
+            btnExcluirEvento.addEventListener(
+                "click",
+                function () {
+
+                    if (!config.modoEditor && !config.modoGestao) {
+                        return;
+                    }
+
+
+                    if (eventosSelecionados.length === 0) {
+                        return;
+                    }
+
+
+                    const evento = eventoAcaoSelecionado;
+
+                    if (!evento) {
+                        return;
+                    }
+
+                    document.getElementById("delIdEvento").value =
+                        evento.id_eventos;
+
+
+                    fecharModal(modalVer);
+
+                    abrirModal(modalExcluir);
+
+                }
+            );
+
+        }
+
+
+        /*
+         * ==========================================
+         * ESC FECHA O MODAL
+         * ==========================================
+         */
+
+        document.addEventListener(
+            "keydown",
+            function (evento) {
+
+                if (evento.key === "Escape") {
+
+                    [
+                        modalAviso,
+                        modalCriar,
+                        modalConfirmar,
+                        modalVer,
+                        modalEditar,
+                        modalExcluir
+                    ].forEach(function (modal) {
+
+                        fecharModal(modal);
+
+                    });
+
+                }
+
+            }
+        );
+
     });
-}
-
-const btnEditarEvento = document.getElementById("btnEditarEvento");
-
-if (btnEditarEvento) {
-
-    btnEditarEvento.addEventListener("click", function () {
-
-        if (!eventoAtual) {
-            return;
-        }
-
-        document.getElementById("editIdEvento").value =
-            eventoAtual.id_eventos;
-
-        document.getElementById("editNome").value =
-            eventoAtual.nome;
-
-        document.getElementById("editTipoProva").checked =
-            eventoAtual.tipo === "Prova";
-
-        document.getElementById("editTipoTrabalho").checked =
-            eventoAtual.tipo === "Trabalho";
-
-        document.getElementById("editTipoEvento").checked =
-            eventoAtual.tipo === "Evento";
-
-        fecharModais();
-        abrirModal(modalEditar);
-    });
-}
-
-const btnExcluirEvento = document.getElementById("btnExcluirEvento");
-
-if (btnExcluirEvento) {
-
-    btnExcluirEvento.addEventListener("click", function () {
-
-        if (!eventoAtual) {
-            return;
-        }
-
-        document.getElementById("delIdEvento").value =
-            eventoAtual.id_eventos;
-
-        fecharModais();
-        abrirModal(modalExcluir);
-    });
-}
-
-function escapeHtml(texto) {
-    const div = document.createElement("div");
-    div.textContent = texto ?? "";
-    return div.innerHTML;
-}
-
-window.addEventListener("pageshow", function (event) {
-
-    if (
-        event.persisted ||
-        (window.performance &&
-            window.performance.getEntriesByType &&
-            window.performance.getEntriesByType("navigation")[0] &&
-            window.performance.getEntriesByType("navigation")[0].type === "back_forward")
-    ) {
-        window.location.reload();
-    }
-});
 </script>
 
+<section>
+      <div class="container">
+        <div class="row">
+          <div class="col-sm-2 offset-sm-5 text-center">
+            <button class="btn btn-warning text-white btn-block" onclick="voltar()">Voltar</button>
+            <script>
+              function voltar(){
+                history.back();
+              }
+            </script>
+          </div>
+        </div>
+      </div>
+    </section><!-- End About Section -->
 
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>

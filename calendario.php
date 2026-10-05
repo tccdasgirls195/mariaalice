@@ -11,7 +11,7 @@ header("Expires: 0");
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
     session_unset();
     session_destroy();
-    header("Location: login.php");
+    header("Location: eventos_login.php");
     exit();
 }
 
@@ -856,6 +856,15 @@ $param_turma = (!$modo_gestao && $id_turma_selecionada)
 
                 <button
                     type="button"
+                    class="btn-action"
+                    id="btnAdicionarOutroEvento"
+                >
+                    <i class="fa-solid fa-plus"></i>
+                    Adicionar
+                </button>
+
+                <button
+                    type="button"
                     class="btn-action btn-edit"
                     id="btnEditarEvento"
                 >
@@ -1508,6 +1517,53 @@ $param_turma = (!$modo_gestao && $id_turma_selecionada)
          * EDITAR EVENTO
          * ==========================================
          */
+
+        const btnAdicionarOutroEvento =
+            document.getElementById("btnAdicionarOutroEvento");
+
+        if (btnAdicionarOutroEvento) {
+
+            btnAdicionarOutroEvento.addEventListener(
+                "click",
+                function () {
+
+                    if (!config.modoEditor && !config.modoGestao) {
+                        return;
+                    }
+
+                    if (!dataSelecionada) {
+                        return;
+                    }
+
+                    if (tempNome) {
+                        tempNome.value = "";
+                    }
+
+                    if (alertaForm) {
+                        alertaForm.style.display = "none";
+                    }
+
+                    const tipoPadrao =
+                        document.querySelector(
+                            'input[name="tempTipo"][value="Prova"]'
+                        );
+
+                    if (tipoPadrao) {
+                        tipoPadrao.checked = true;
+                    }
+
+                    /*
+                     * A dataSelecionada continua sendo a mesma data
+                     * em que o usuário clicou. Assim, o novo evento
+                     * será salvo no mesmo dia dos eventos existentes.
+                     */
+                    fecharModal(modalVer);
+                    abrirModal(modalCriar);
+                }
+            );
+
+        }
+
 
         const btnEditarEvento =
             document.getElementById("btnEditarEvento");

@@ -11,11 +11,11 @@ header("Expires: 0");
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
     session_unset();
     session_destroy();
-    header("Location: eventos_login.php");
+    header("Location: calendario.php");
     exit();
 }
 
-include("conexao.php");
+include("../conexao.php");
 
 /*
  * Permissão para gerenciamento:
@@ -560,15 +560,23 @@ $param_turma = (!$modo_gestao && $id_turma_selecionada)
 
     <div class="menu">
 
-        <form action="calendario.php" method="POST" class="form-logout">
+        <?php if ($pode_gerenciar_eventos): ?>
 
-            <input type="hidden" name="logout" value="1">
+            <form action="calendario.php" method="POST" class="form-logout">
+                <input type="hidden" name="logout" value="1">
+                <button type="submit" class="btn-logout" title="Sair" aria-label="Sair">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </form>
 
-            <button type="submit" class="btn-logout">
-                <i class="fa-solid fa-right-from-bracket"></i>
-            </button>
+        <?php else: ?>
 
-        </form>
+            <a href="../login/eventos_login.php" class="btn-logout" title="Entrar" aria-label="Entrar">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                <span>Entrar</span>
+            </a>
+
+        <?php endif; ?>
 
     </div>
 
@@ -844,47 +852,23 @@ $param_turma = (!$modo_gestao && $id_turma_selecionada)
             <i class="fa-solid fa-xmark"></i>
         </button>
 
-        <h3 class="modal-titulo">
+        <h3 class="modal-titulo" id="tituloModalVerEvento">
             Evento
         </h3>
 
         <div id="listaEventos" class="lista-eventos"></div>
 
         <?php if ($pode_gerenciar_eventos): ?>
-
             <div class="modal-actions ver-actions">
-
                 <button
                     type="button"
-                    class="btn-action"
+                    class="btn-action btn-adicionar-evento"
                     id="btnAdicionarOutroEvento"
                 >
                     <i class="fa-solid fa-plus"></i>
                     Adicionar
                 </button>
-
-                <button
-                    type="button"
-                    class="btn-action btn-edit"
-                    id="btnEditarEvento"
-                >
-                    <i class="fa-solid fa-pen"></i>
-                    Editar
-                </button>
-
-                <button
-                    type="button"
-                    class="btn-action btn-delete"
-                    id="btnExcluirEvento"
-                >
-                    <i class="fa-solid fa-trash"></i>
-                    Excluir
-                </button>
-
             </div>
-
-        <?php else: ?>
-
         <?php endif; ?>
 
     </div>
@@ -1338,67 +1322,86 @@ $param_turma = (!$modo_gestao && $id_turma_selecionada)
             const listaEventos =
                 document.getElementById("listaEventos");
 
+            // Atualiza somente o título do modal de visualização.
+            // Os títulos dos modais de adicionar e editar permanecem iguais.
+            const tituloModal = document.getElementById("tituloModalVerEvento");
+            if (tituloModal && dataSelecionada) {
+                const dataObj = new Date(dataSelecionada + "T12:00:00");
+                const diaSemana = dataObj.toLocaleDateString("pt-BR", { weekday: "long" });
+                const diaMes = dataObj.getDate();
+                const mes = dataObj.toLocaleDateString("pt-BR", { month: "long" });
+
+                tituloModal.textContent =
+                    diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1) +
+                    ", " + diaMes + " de " + mes;
+            }
 
             if (!listaEventos) {
                 return;
             }
 
-
             listaEventos.innerHTML = "";
 
-            // Define qual evento poderá ser editado/excluído.
-            // Gestão -> somente eventos gerais.
-            // Representante -> somente eventos da própria turma.
-            eventoAcaoSelecionado = eventos.find(function (evento) {
-                if (config.modoGestao) {
-                    return evento.id_turma === null || evento.id_turma === undefined || evento.id_turma === "";
-                }
-
-                if (config.modoEditor) {
-                    return String(evento.id_turma) === String(config.turmaSelecionada);
-                }
-
-                return false;
-            }) || null;
-
-            if (btnEditarEvento) {
-                btnEditarEvento.style.display = eventoAcaoSelecionado ? "inline-flex" : "none";
-            }
-
-            if (btnExcluirEvento) {
-                btnExcluirEvento.style.display = eventoAcaoSelecionado ? "inline-flex" : "none";
-            }
-
             eventos.forEach(function (evento) {
-
-                const item =
-                    document.createElement("div");
-
+                const item = document.createElement("div");
                 item.className = "evento-item";
 
+                const conteudo = document.createElement("div");
+                conteudo.className = "evento-conteudo";
 
-                const titulo =
-                    document.createElement("strong");
+                const titulo = document.createElement("strong");
+                titulo.className = "evento-tipo";
+                titulo.textContent = evento.tipo;
 
-                titulo.textContent =
-                    evento.tipo;
+                const descricao = document.createElement("p");
+                descricao.className = "evento-descricao";
+                descricao.textContent = evento.nome;
 
+                conteudo.appendChild(titulo);
+                conteudo.appendChild(descricao);
+                item.appendChild(conteudo);
 
-                const descricao =
-                    document.createElement("p");
+                // Cada evento recebe seus próprios botões, se o usuário
+                // tiver permissão para alterar aquele evento específico.
+                const podeAlterar = config.modoGestao
+                    ? (evento.id_turma === null || evento.id_turma === undefined || evento.id_turma === "")
+                    : (config.modoEditor && String(evento.id_turma) === String(config.turmaSelecionada));
 
-                descricao.textContent =
-                    evento.nome;
+                if (podeAlterar) {
+                    const acoes = document.createElement("div");
+                    acoes.className = "evento-acoes";
 
+                    const btnEditar = document.createElement("button");
+                    btnEditar.type = "button";
+                    btnEditar.className = "evento-btn evento-btn-editar";
+                    btnEditar.innerHTML = '<i class="fa-solid fa-pen"></i> Editar';
+                    btnEditar.addEventListener("click", function () {
+                        document.getElementById("editIdEvento").value = evento.id_eventos;
+                        document.getElementById("editNome").value = evento.nome;
+                        document.getElementById("editTipoProva").checked = evento.tipo === "Prova";
+                        document.getElementById("editTipoTrabalho").checked = evento.tipo === "Trabalho";
+                        document.getElementById("editTipoEvento").checked = evento.tipo === "Evento";
+                        fecharModal(modalVer);
+                        abrirModal(modalEditar);
+                    });
 
-                item.appendChild(titulo);
-                item.appendChild(descricao);
+                    const btnExcluir = document.createElement("button");
+                    btnExcluir.type = "button";
+                    btnExcluir.className = "evento-btn evento-btn-excluir";
+                    btnExcluir.innerHTML = '<i class="fa-solid fa-trash"></i> Excluir';
+                    btnExcluir.addEventListener("click", function () {
+                        document.getElementById("delIdEvento").value = evento.id_eventos;
+                        fecharModal(modalVer);
+                        abrirModal(modalExcluir);
+                    });
 
+                    acoes.appendChild(btnEditar);
+                    acoes.appendChild(btnExcluir);
+                    item.appendChild(acoes);
+                }
 
                 listaEventos.appendChild(item);
-
             });
-
 
             abrirModal(modalVer);
 
@@ -1565,136 +1568,6 @@ $param_turma = (!$modo_gestao && $id_turma_selecionada)
         }
 
 
-        const btnEditarEvento =
-            document.getElementById("btnEditarEvento");
-
-        if (btnEditarEvento) {
-
-            btnEditarEvento.addEventListener(
-                "click",
-                function () {
-
-                    if (!config.modoEditor && !config.modoGestao) {
-                        return;
-                    }
-
-
-                    if (eventosSelecionados.length === 0) {
-                        return;
-                    }
-
-
-                    /*
-                     * Pega o primeiro evento.
-                     */
-
-                    const evento = eventoAcaoSelecionado;
-
-                    if (!evento) {
-                        return;
-                    }
-
-                    document.getElementById("editIdEvento").value =
-                        evento.id_eventos;
-
-
-                    document.getElementById("editNome").value =
-                        evento.nome;
-
-
-                    /*
-                     * Limpa os radio buttons.
-                     */
-
-                    document.getElementById("editTipoProva").checked =
-                        false;
-
-                    document.getElementById("editTipoTrabalho").checked =
-                        false;
-
-                    document.getElementById("editTipoEvento").checked =
-                        false;
-
-
-                    /*
-                     * Marca o tipo correto.
-                     */
-
-                    if (evento.tipo === "Prova") {
-
-                        document.getElementById("editTipoProva").checked =
-                            true;
-
-                    }
-
-                    if (evento.tipo === "Trabalho") {
-
-                        document.getElementById("editTipoTrabalho").checked =
-                            true;
-
-                    }
-
-                    if (evento.tipo === "Evento") {
-
-                        document.getElementById("editTipoEvento").checked =
-                            true;
-
-                    }
-
-
-                    fecharModal(modalVer);
-
-                    abrirModal(modalEditar);
-
-                }
-            );
-
-        }
-
-
-        /*
-         * ==========================================
-         * EXCLUIR EVENTO
-         * ==========================================
-         */
-
-        const btnExcluirEvento =
-            document.getElementById("btnExcluirEvento");
-
-        if (btnExcluirEvento) {
-
-            btnExcluirEvento.addEventListener(
-                "click",
-                function () {
-
-                    if (!config.modoEditor && !config.modoGestao) {
-                        return;
-                    }
-
-
-                    if (eventosSelecionados.length === 0) {
-                        return;
-                    }
-
-
-                    const evento = eventoAcaoSelecionado;
-
-                    if (!evento) {
-                        return;
-                    }
-
-                    document.getElementById("delIdEvento").value =
-                        evento.id_eventos;
-
-
-                    fecharModal(modalVer);
-
-                    abrirModal(modalExcluir);
-
-                }
-            );
-
-        }
 
 
         /*

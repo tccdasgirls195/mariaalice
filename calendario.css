@@ -2,7 +2,7 @@
    RESET
    ========================= */
 
-* {
+   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -578,25 +578,43 @@ nav li ul li a:hover {
 /* Botão redondo vermelho com "X" no canto superior direito */
 .btn-close-corner {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background-color: #d32f2f;
-    color: white;
-    border: none;
+
+    top: 10px;
+    right: 15px;
+
+    width: 30px !important;
+    height: 30px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    border: none !important;
+    background: transparent !important;
+
+    color: #555555 !important;
+
+    font-size: 20px !important;
+    font-weight: normal !important;
+
+    line-height: 30px !important;
+
     cursor: pointer;
-    display: flex;
+
+    display: flex !important;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    transition: background 0.2s ease, transform 0.1s ease;
+
+    box-shadow: none !important;
+    outline: none !important;
+
+    appearance: none;
+
+    transition: color 0.2s ease;
 }
 
 .btn-close-corner:hover {
-    background-color: #b71c1c;
-    transform: scale(1.08);
+    background: transparent !important;
+    color: #d92b2b !important;
 }
 
 
@@ -908,4 +926,85 @@ nav li ul li a:hover {
 
 .form-inline {
     display: inline;
+}
+
+/* =========================
+   EVENTOS DENTRO DO MODAL
+   ========================= */
+#modalVer .modal-card {
+    width: min(420px, calc(100vw - 28px));
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 24px 20px 18px;
+}
+
+#modalVer .modal-titulo {
+    margin: 0 32px 18px 0;
+    font-size: 23px;
+    font-weight: 500;
+}
+
+.lista-eventos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.evento-item {
+    border-bottom: 1px solid #e5e5e5;
+    padding: 0 0 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-width: 0;
+}
+
+.evento-conteudo {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.evento-tipo {
+    display: block;
+    font-size: 18px;
+    line-height: 1.4;
+    margin-bottom: 3px;
+}
+
+.evento-descricao {
+    font-size: 18px;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.evento-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.evento-btn {
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.evento-btn-editar { background: #2e7d32; }
+.evento-btn-excluir { background: #d92b2b; }
+.evento-btn:hover { filter: brightness(.93); }
+
+#modalVer .ver-actions {
+    justify-content: flex-start;
+    margin-top: 16px;
+}
+
+#modalVer .btn-adicionar-evento {
+    margin: 0;
 }
